@@ -1,25 +1,20 @@
-import { auth } from "@/lib/auth/auth";
+import { verifySession } from "@/lib/auth/session";
 import { db } from "@/lib/db";
-import { generatedCvs } from "@/lib/db/schema";
+import { generatedCvs, users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { CvPageTabs } from "@/components/cv/cv-page-tabs";
-import type { CvData, CoverLetterData, TemplateId } from "@/types/cv";
+import type { CvData, CoverLetterData, GenerationReport, TemplateId } from "@/types/cv";
 
-interface CvEditorPageProps {
-  params: Promise<{ id: string }>;
-}
-
-export default async function CvEditorPage({ params }: CvEditorPageProps) {
+export default async function CvEditorPage({ params }: PageProps<"/cv/[id]">) {
   const { id } = await params;
-  const session = await auth();
-  if (!session?.user?.id) return null;
+  const userId = await verifySession();
 
   const cv = await db.query.generatedCvs.findFirst({
     where: eq(generatedCvs.id, id),
   });
 
-  if (!cv || cv.userId !== session.user.id) {
+  if (!cv || cv.userId !== userId) {
     notFound();
   }
 
@@ -90,6 +85,22 @@ export default async function CvEditorPage({ params }: CvEditorPageProps) {
     cvData = emptyCvData;
   }
 
+  // The CV always shows the current profile photo, not the one known when it was generated
+  const profile = await db.query.users.findFirst({
+    where: eq(users.id, userId),
+    columns: { image: true },
+  });
+  cvData.header.image = profile?.image ?? null;
+
+  let generationReport: GenerationReport | null = null;
+  if (cv.generationReport) {
+    try {
+      generationReport = JSON.parse(cv.generationReport);
+    } catch {
+      generationReport = null;
+    }
+  }
+
   let coverLetterData: CoverLetterData | null = null;
   if (cv.coverLetterData) {
     try {
@@ -106,6 +117,7 @@ export default async function CvEditorPage({ params }: CvEditorPageProps) {
         initialCvData={cvData}
         initialTemplateId={cv.templateId as TemplateId}
         initialCoverLetterData={coverLetterData}
+        generationReport={generationReport}
       />
     </div>
   );

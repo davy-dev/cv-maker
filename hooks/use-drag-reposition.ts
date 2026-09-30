@@ -1,4 +1,4 @@
-import { useRef, useCallback, useState, useEffect } from "react";
+import { useRef, useCallback, useState } from "react";
 import type { ImagePosition } from "@/types/cv";
 
 interface UseDragRepositionOptions {
@@ -19,16 +19,14 @@ export function useDragReposition({
   const containerSize = useRef({ width: 0, height: 0 });
 
   // Sync local state when external position changes (reset, new image)
-  const prevExternal = useRef(externalPosition);
-  useEffect(() => {
-    if (
-      prevExternal.current.x !== externalPosition.x ||
-      prevExternal.current.y !== externalPosition.y
-    ) {
-      setLocalPosition(externalPosition);
-      prevExternal.current = externalPosition;
-    }
-  }, [externalPosition]);
+  const [prevExternal, setPrevExternal] = useState(externalPosition);
+  if (
+    prevExternal.x !== externalPosition.x ||
+    prevExternal.y !== externalPosition.y
+  ) {
+    setPrevExternal(externalPosition);
+    setLocalPosition(externalPosition);
+  }
 
   const onPointerDown = useCallback(
     (e: React.PointerEvent) => {
