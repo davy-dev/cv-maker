@@ -1,3 +1,10 @@
+import type { z } from "zod";
+import type {
+  jobAnalysisSchema,
+  matchedSkillSchema,
+  missingSkillSchema,
+} from "@/lib/ai/schemas";
+
 export interface CompanyInfo {
   name: string;
   description: string;
@@ -7,27 +14,7 @@ export interface CompanyInfo {
   rawExcerpt: string;
 }
 
-export interface MatchedSkill {
-  skill: string;
-  relevance: "high" | "medium" | "low";
-  context: string;
-}
-
-export interface MissingSkill {
-  skill: string;
-  importance: "required" | "nice-to-have";
-  suggestion: string;
-}
-
-export interface JobAnalysis {
-  jobTitle: string;
-  company: string;
-  jobSummary: string;
-  requiredSkills: string[];
-  niceToHaveSkills: string[];
-  matchedSkills: MatchedSkill[];
-  missingSkills: MissingSkill[];
-  matchScore: number;
-  tailoringAdvice: string;
-  keywordsToInclude: string[];
-}
+// Defined by the structured output schemas sent to Claude
+export type MatchedSkill = z.infer<typeof matchedSkillSchema>;
+export type MissingSkill = z.infer<typeof missingSkillSchema>;
+export type JobAnalysis = z.infer<typeof jobAnalysisSchema>;
