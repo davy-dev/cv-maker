@@ -1,0 +1,83 @@
+import { readFileSync } from "node:fs";
+import Database from "better-sqlite3";
+import { test, expect } from "./fixtures";
+
+// The app never calls Claude here: the CV is written straight into the E2E database.
+function insertCv(email: string, projectCount: number, generationReport: object | null = null): string {
+  const db = new Database("data/e2e.db");
+  try {
+    const { id: userId } = db.prepare("SELECT id FROM users WHERE email = ?").get(email) as { id: string };
+    const cvId = `e2e${Date.now()}${Math.random().toString(36).slice(2, 8)}`;
+    const cvData = {
+      header: { name: "Camille Test", title: "Développeuse", email, phone: "0600000000", location: "Lyon", website: null, linkedin: null, github: null, image: null },
+      summary: "Développeuse full-stack.",
+      yearsExperience: "5 ans d'expérience",
+      showPhoto: false,
+      showProjects: true,
+      headerBgColor: null,
+      headerTextColor: null,
+      headerBgImage: null,
+      headerBgImagePosition: null,
+      experience: [{ id: "exp1", company: "Acme", position: "Développeuse", location: "Lyon", startDate: "2020-01", endDate: "Présent", bullets: ["A livré une API"] }],
+      education: [],
+      skills: { Langages: ["TypeScript"] },
+      projects: Array.from({ length: projectCount }, (_, i) => ({
+        id: `p${i}`, name: `Projet ${i}`,
+        description: "Une description de projet assez longue pour occuper de la place. ".repeat(3),
+        technologies: ["TypeScript"], url: null, type: "side-project", role: "Autrice", impact: "Mesurable",
+        highlights: ["Premier défi", "Second défi"], motivation: "", links: [], linkedExperienceId: null, displayMode: "projects-section",
+      })),
+      interests: [],
+    };
+    db.prepare(
+      "INSERT INTO generated_cvs (id, user_id, title, job_offer_text, cv_data, generation_report, template_id, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, 'modern', 'draft', ?, ?)"
+    ).run(cvId, userId, "Test", "Offre", JSON.stringify(cvData), generationReport && JSON.stringify(generationReport), Date.now() / 1000, Date.now() / 1000);
+    return cvId;
+  } finally {
+    db.close();
+  }
+}
+
+async function downloadedPageCount(page: import("@playwright/test").Page) {
+  const [download] = await Promise.all([
+    page.waitForEvent("download"),
+    page.getByRole("button", { name: "Télécharger en PDF" }).click(),
+  ]);
+  const pdf = readFileSync((await download.path())!).toString("latin1");
+  return Number(pdf.match(/\/Count (\d+)/)![1]);
+}
+
+test("l'aperçu montre le vrai PDF et correspond au fichier téléchargé", async ({ page, user }) => {
+  const cvId = insertCv(user.email, 20);
+  await page.goto(`/cv/${cvId}`);
+
+  // Long CV: the preview shows every page and warns about it
+  await expect(page.getByText(/^\d+ pages — masquez des éléments/)).toBeVisible({ timeout: 20_000 });
+  const previewPages = await page.getByRole("img", { name: /^Page \d+ sur \d+$/ }).count();
+  expect(previewPages).toBeGreaterThan(1);
+  expect(await downloadedPageCount(page)).toBe(previewPages);
+
+  // Hiding the projects brings it back to one page, in the preview and in the file
+  const projectsCard = page.locator("div").filter({ has: page.getByText("Projets", { exact: true }) }).last();
+  await projectsCard.getByLabel("Afficher sur le CV").first().uncheck();
+  await expect(page.getByText("1 page", { exact: true })).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByRole("img", { name: /^Page \d+ sur \d+$/ })).toHaveCount(1);
+  expect(await downloadedPageCount(page)).toBe(1);
+});
+
+test("l'éditeur montre la vérification des faits et les compétences à acquérir", async ({ page, user }) => {
+  const cvId = insertCv(user.email, 1, {
+    method: "model",
+    checkedCount: 6,
+    rejected: [{ section: "experience", text: "A encadré 5 développeurs", reason: "Chiffre absent de vos données : 5" }],
+    skillsToAcquire: [{ skill: "Kubernetes", reason: "Demandé par l'offre", howToAcquire: "Certification CKA" }],
+  });
+  await page.goto(`/cv/${cvId}`);
+
+  const main = page.getByRole("main");
+  await expect(main.getByText(/5 phrases rédigées par l'IA ont été vérifiées/)).toBeVisible();
+  await main.getByText("1 élément retiré car absent de votre profil").click();
+  await expect(main.getByText("A encadré 5 développeurs")).toBeVisible();
+  await expect(main.getByText("Compétences à acquérir pour ce poste")).toBeVisible();
+  await expect(main.getByText("Certification CKA")).toBeVisible();
+});
