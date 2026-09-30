@@ -21,3 +21,11 @@ Scraping: Cheerio
 Styling: Tailwind CSS v4
 Validation: Zod + React Hook Form
 Getting Started
+Testing
+npm run test — Vitest in watch mode (unit, integration, components)
+npm run test:coverage — single run with coverage report in coverage/ (fails below the thresholds in vitest.config.mts)
+npm run test:e2e — Playwright end-to-end tests against a production build on port 3100, with its own database (data/e2e.db)
+npm run lint / npm run typecheck — static checks
+Integration tests run against an in-memory SQLite database migrated from lib/db/migrations; auth and the Claude API are mocked.
+Tests marked it.fails document known bugs: when a bug is fixed, the test starts failing, so switch it to it.
+All checks run in GitHub Actions on every push to main and every pull request (.github/workflows/quality.yml).
