@@ -19,11 +19,7 @@ export const metadata: Metadata = {
     "Matchez vos compétences avec les offres d'emploi et générez des CV personnalisés grâce à l'IA.",
 };
 
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="fr">
       <body

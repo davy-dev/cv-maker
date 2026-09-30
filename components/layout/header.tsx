@@ -1,12 +1,15 @@
 "use client";
 
-import { useSession, signOut } from "next-auth/react";
+import { signOut } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import Image from "next/image";
 
-export function Header() {
-  const { data: session } = useSession();
+interface HeaderProps {
+  user: { name: string | null; email: string; image: string | null } | null;
+}
+
+export function Header({ user }: HeaderProps) {
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
@@ -32,9 +35,9 @@ export function Header() {
           onClick={() => setMenuOpen(!menuOpen)}
           className="flex items-center gap-2 rounded-lg px-3 py-2 hover:bg-gray-100 transition-colors"
         >
-          {session?.user?.image ? (
+          {user?.image ? (
             <Image
-              src={session.user.image}
+              src={user.image}
               alt=""
               width={32}
               height={32}
@@ -43,12 +46,12 @@ export function Header() {
           ) : (
             <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center">
               <span className="text-white text-sm font-medium">
-                {session?.user?.name?.[0]?.toUpperCase() ?? "U"}
+                {user?.name?.[0]?.toUpperCase() ?? "U"}
               </span>
             </div>
           )}
           <span className="hidden sm:block text-sm font-medium text-gray-700">
-            {session?.user?.name ?? "Utilisateur"}
+            {user?.name ?? "Utilisateur"}
           </span>
         </button>
 
@@ -57,8 +60,8 @@ export function Header() {
             <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
             <div className="absolute right-0 z-20 mt-2 w-48 rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
               <div className="px-4 py-2 border-b border-gray-100">
-                <p className="text-sm font-medium text-gray-900">{session?.user?.name}</p>
-                <p className="text-xs text-gray-500 truncate">{session?.user?.email}</p>
+                <p className="text-sm font-medium text-gray-900">{user?.name}</p>
+                <p className="text-xs text-gray-500 truncate">{user?.email}</p>
               </div>
               <Button
                 variant="ghost"

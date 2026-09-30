@@ -1,6 +1,6 @@
-import { auth } from "@/lib/auth/auth";
+import { verifySession } from "@/lib/auth/session";
 import { db } from "@/lib/db";
-import { generatedCvs } from "@/lib/db/schema";
+import { generatedCvs, users } from "@/lib/db/schema";
 import { eq, desc } from "drizzle-orm";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -8,13 +8,18 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
 export default async function DashboardPage() {
-  const session = await auth();
-  if (!session?.user?.id) return null;
+  const userId = await verifySession();
+
+  // Read the name from the database: the session token keeps the name from sign-in time
+  const user = await db.query.users.findFirst({
+    where: eq(users.id, userId),
+    columns: { name: true },
+  });
 
   const recentCvs = await db
     .select()
     .from(generatedCvs)
-    .where(eq(generatedCvs.userId, session.user.id))
+    .where(eq(generatedCvs.userId, userId))
     .orderBy(desc(generatedCvs.createdAt))
     .limit(5);
 
@@ -23,7 +28,7 @@ export default async function DashboardPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">
-            Bonjour, {session.user.name ?? "Utilisateur"} !
+            Bonjour, {user?.name ?? "Utilisateur"} !
           </h1>
           <p className="text-gray-500 mt-1">
             Bienvenue sur votre espace CV Maker

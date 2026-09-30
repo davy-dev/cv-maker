@@ -12,6 +12,8 @@ import type { SkillInput } from "@/lib/validators";
 const CATEGORIES = [
   { value: "language", label: "Langage" },
   { value: "framework", label: "Framework" },
+  { value: "library", label: "Librairie" },
+  { value: "runtime", label: "Runtime" },
   { value: "tool", label: "Outil" },
   { value: "database", label: "Base de données" },
   { value: "devops", label: "DevOps" },
@@ -22,6 +24,8 @@ const CATEGORIES = [
 const CATEGORY_LABELS: Record<string, string> = {
   language: "Langages",
   framework: "Frameworks",
+  library: "Librairies",
+  runtime: "Runtimes",
   tool: "Outils",
   database: "Bases de données",
   devops: "DevOps",
