@@ -1,14 +1,15 @@
-import { auth } from "@/lib/auth/auth";
+import { getCurrentUserId } from "@/lib/auth/session";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
 import { NextResponse } from "next/server";
+import { UPLOAD_DIR, detectImageExtension } from "@/lib/uploads";
 
 export async function POST(request: Request) {
-  const session = await auth();
-  if (!session?.user?.id) {
+  const userId = await getCurrentUserId();
+  if (!userId) {
     return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
   }
 
@@ -27,30 +28,29 @@ export async function POST(request: Request) {
     );
   }
 
-  // Validate file type
-  if (!file.type.startsWith("image/")) {
+  // Validate the actual content: the MIME type and file name are client-controlled,
+  // and anything saved here is served from our own origin.
+  const buffer = Buffer.from(await file.arrayBuffer());
+  const ext = detectImageExtension(buffer);
+  if (!ext) {
     return NextResponse.json(
-      { error: "Format non supporté" },
+      { error: "Format non supporté : utilisez une image JPG, PNG, GIF ou WebP" },
       { status: 400 }
     );
   }
 
-  const ext = file.name.split(".").pop() || "jpg";
-  const fileName = `${session.user.id}.${ext}`;
-  const uploadDir = path.join(process.cwd(), "public", "uploads");
-
-  await mkdir(uploadDir, { recursive: true });
-
-  const buffer = Buffer.from(await file.arrayBuffer());
-  const filePath = path.join(uploadDir, fileName);
-  await writeFile(filePath, buffer);
+  // A new name on every upload, so browsers and the image optimizer never serve the old photo.
+  // Previous files are kept: CVs generated earlier still reference them.
+  const fileName = `${userId}-${Date.now()}.${ext}`;
+  await mkdir(UPLOAD_DIR, { recursive: true });
+  await writeFile(path.join(UPLOAD_DIR, fileName), buffer);
 
   const imageUrl = `/uploads/${fileName}`;
 
   await db
     .update(users)
     .set({ image: imageUrl, updatedAt: new Date() })
-    .where(eq(users.id, session.user.id));
+    .where(eq(users.id, userId));
 
   return NextResponse.json({ url: imageUrl });
 }
