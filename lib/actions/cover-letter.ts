@@ -3,17 +3,11 @@
 import { db } from "@/lib/db";
 import { generatedCvs } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { auth } from "@/lib/auth/auth";
+import { requireUserId } from "@/lib/auth/session";
 import type { CoverLetterData } from "@/types/cv";
 
-async function getUserId() {
-  const session = await auth();
-  if (!session?.user?.id) throw new Error("Non authentifié");
-  return session.user.id;
-}
-
 export async function saveCoverLetterData(cvId: string, data: CoverLetterData) {
-  const userId = await getUserId();
+  const userId = await requireUserId();
 
   const cv = await db.query.generatedCvs.findFirst({
     where: eq(generatedCvs.id, cvId),
