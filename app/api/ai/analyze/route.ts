@@ -1,18 +1,18 @@
-import { auth } from "@/lib/auth/auth";
+import { getCurrentUserId } from "@/lib/auth/session";
 import { db } from "@/lib/db";
 import { skills, generatedCvs } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { anthropic } from "@/lib/ai/client";
+import { generateStructured } from "@/lib/ai/generate";
+import { jobAnalysisSchema } from "@/lib/ai/schemas";
 import { buildAnalysisPrompt } from "@/lib/ai/prompts";
 import { scrapeCompany } from "@/lib/scraper";
 import { analyzeJobSchema } from "@/lib/validators";
 import { createId } from "@paralleldrive/cuid2";
 import { NextResponse } from "next/server";
-import type { JobAnalysis } from "@/types/job";
 
 export async function POST(request: Request) {
-  const session = await auth();
-  if (!session?.user?.id) {
+  const userId = await getCurrentUserId();
+  if (!userId) {
     return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
   }
 
@@ -33,7 +33,7 @@ export async function POST(request: Request) {
     db
       .select()
       .from(skills)
-      .where(eq(skills.userId, session.user.id)),
+      .where(eq(skills.userId, userId)),
   ]);
 
   if (userSkills.length === 0) {
@@ -48,19 +48,8 @@ export async function POST(request: Request) {
 
   // Call Claude to analyze
   const prompt = buildAnalysisPrompt(jobOfferText, companyInfo, userSkills);
-  const response = await anthropic.messages.create({
-    model: "claude-sonnet-4-20250514",
-    max_tokens: 4096,
-    messages: [{ role: "user", content: prompt }],
-  });
-
-  const analysisText =
-    response.content[0].type === "text" ? response.content[0].text : "";
-
-  let analysis: JobAnalysis;
-  try {
-    analysis = JSON.parse(analysisText);
-  } catch {
+  const analysis = await generateStructured(prompt, jobAnalysisSchema);
+  if (!analysis) {
     return NextResponse.json(
       { error: "Erreur lors de l'analyse de la réponse IA" },
       { status: 500 }
@@ -71,7 +60,7 @@ export async function POST(request: Request) {
   const cvId = createId();
   await db.insert(generatedCvs).values({
     id: cvId,
-    userId: session.user.id,
+    userId: userId,
     title: `${analysis.jobTitle} - ${analysis.company}`,
     jobOfferText,
     companyUrl: companyUrl || null,

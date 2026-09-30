@@ -1,4 +1,4 @@
-import { auth } from "@/lib/auth/auth";
+import { getCurrentUserId } from "@/lib/auth/session";
 import { db } from "@/lib/db";
 import {
   generatedCvs,
@@ -9,16 +9,14 @@ import {
   projects,
 } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { anthropic } from "@/lib/ai/client";
-import { buildCvGenerationPrompt } from "@/lib/ai/prompts";
+import { generateGroundedCv } from "@/lib/ai/grounded-cv";
 import { generateCvSchema } from "@/lib/validators";
 import { NextResponse } from "next/server";
 import type { JobAnalysis } from "@/types/job";
-import type { CvData } from "@/types/cv";
 
 export async function POST(request: Request) {
-  const session = await auth();
-  if (!session?.user?.id) {
+  const userId = await getCurrentUserId();
+  if (!userId) {
     return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
   }
 
@@ -38,7 +36,7 @@ export async function POST(request: Request) {
     where: eq(generatedCvs.id, cvId),
   });
 
-  if (!cvRecord || cvRecord.userId !== session.user.id) {
+  if (!cvRecord || cvRecord.userId !== userId) {
     return NextResponse.json({ error: "CV non trouvé" }, { status: 404 });
   }
 
@@ -55,73 +53,57 @@ export async function POST(request: Request) {
   const [user, userSkills, experiences, educations, userProjects] =
     await Promise.all([
       db.query.users.findFirst({
-        where: eq(users.id, session.user.id),
+        where: eq(users.id, userId),
       }),
       db
         .select()
         .from(skills)
-        .where(eq(skills.userId, session.user.id)),
+        .where(eq(skills.userId, userId)),
       db
         .select()
         .from(workExperiences)
-        .where(eq(workExperiences.userId, session.user.id)),
+        .where(eq(workExperiences.userId, userId)),
       db
         .select()
         .from(education)
-        .where(eq(education.userId, session.user.id)),
+        .where(eq(education.userId, userId)),
       db
         .select()
         .from(projects)
-        .where(eq(projects.userId, session.user.id)),
+        .where(eq(projects.userId, userId)),
     ]);
 
   if (!user) {
     return NextResponse.json({ error: "Utilisateur non trouvé" }, { status: 404 });
   }
 
-  // Call Claude to generate CV
-  const prompt = buildCvGenerationPrompt(
-    analysis,
+  const result = await generateGroundedCv(analysis, {
     user,
+    skills: userSkills,
     experiences,
     educations,
-    userSkills,
-    userProjects
-  );
-
-  const response = await anthropic.messages.create({
-    model: "claude-sonnet-4-20250514",
-    max_tokens: 8192,
-    messages: [{ role: "user", content: prompt }],
+    projects: userProjects,
   });
-
-  const cvText =
-    response.content[0].type === "text" ? response.content[0].text : "";
-
-  let cvData: CvData;
-  try {
-    cvData = JSON.parse(cvText);
-  } catch {
-    return NextResponse.json(
-      { error: "Erreur lors de la génération du CV" },
-      { status: 500 }
-    );
+  if (!result.ok) {
+    return result.reason === "empty-profile"
+      ? NextResponse.json(
+          { error: "Votre profil est vide : ajoutez vos expériences et compétences avant de générer un CV." },
+          { status: 400 }
+        )
+      : NextResponse.json({ error: "Erreur lors de la génération du CV" }, { status: 500 });
   }
-
-  // Inject user's profile photo into CV data
-  cvData.header.image = user.image ?? null;
-  // Enable photo display if user has a profile photo
-  cvData.showPhoto = !!user.image;
+  const { cvData, report } = result;
 
   // Save to database
   await db
     .update(generatedCvs)
     .set({
       cvData: JSON.stringify(cvData),
+      generationReport: JSON.stringify(report),
       templateId,
       updatedAt: new Date(),
     })
     .where(eq(generatedCvs.id, cvId));
 
-  return NextResponse.json({ cvData });
+  return NextResponse.json({ cvData, report });
 }

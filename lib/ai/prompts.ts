@@ -1,5 +1,8 @@
 import type { CompanyInfo, JobAnalysis } from "@/types/job";
 import type { CvData } from "@/types/cv";
+import { formatFactsForPrompt, type FactCatalog } from "./facts";
+import type { Claim } from "./verify";
+import { MAX_SECTION_PROJECTS } from "@/lib/cv/visibility";
 
 interface SkillForPrompt {
   name: string;
@@ -25,18 +28,6 @@ interface EducationForPrompt {
   startDate: string;
   endDate: string | null;
   description: string | null;
-}
-
-interface ProjectForPrompt {
-  name: string;
-  description: string | null;
-  url: string | null;
-  technologies: string | null;
-  highlights: string | null;
-  type: string;
-  role: string | null;
-  impact: string | null;
-  motivation: string | null;
 }
 
 interface ProfileForPrompt {
@@ -77,185 +68,52 @@ ${
 ${userSkills.map((s) => `- ${s.name} (${s.category}, niveau ${s.level}/5, ${s.yearsOfExperience ?? "N/A"} ans)`).join("\n")}
 
 ## Tâche
-Analyse l'offre d'emploi et retourne un objet JSON avec cette structure exacte:
-{
-  "jobTitle": "le titre du poste",
-  "company": "nom de l'entreprise",
-  "jobSummary": "résumé en 2-3 phrases du rôle",
-  "requiredSkills": ["compétence1", "compétence2"],
-  "niceToHaveSkills": ["compétence1", "compétence2"],
-  "matchedSkills": [
-    { "skill": "React", "relevance": "high", "context": "Framework principal du poste" }
-  ],
-  "missingSkills": [
-    { "skill": "Kubernetes", "importance": "nice-to-have", "suggestion": "Mentionner l'expérience Docker comme alternative" }
-  ],
-  "matchScore": 85,
-  "tailoringAdvice": "Concentrez votre CV sur...",
-  "keywordsToInclude": ["mot-clé1", "mot-clé2"]
+Analyse l'offre d'emploi : identifie les compétences du candidat qui correspondent, celles qui manquent (avec une piste pour compenser), un score de correspondance et les mots-clés à reprendre dans le CV.
+
+Rédige en français.`;
 }
 
-Retourne UNIQUEMENT le JSON, sans bloc de code markdown.`;
-}
-
-export function buildCvGenerationPrompt(
-  analysis: JobAnalysis,
-  profile: ProfileForPrompt,
-  experiences: ExperienceForPrompt[],
-  educations: EducationForPrompt[],
-  userSkills: SkillForPrompt[],
-  projects: ProjectForPrompt[]
-): string {
-  return `Tu es un rédacteur de CV professionnel. Génère un CV personnalisé pour ce candidat ciblant l'offre d'emploi analysée ci-dessous.
+export function buildCvGenerationPrompt(analysis: JobAnalysis, catalog: FactCatalog): string {
+  return `Tu es un rédacteur de CV. Adapte le CV de ce candidat à l'offre ci-dessous en reformulant UNIQUEMENT les faits de son profil.
 
 ## Poste ciblé
 - Titre: ${analysis.jobTitle}
 - Entreprise: ${analysis.company}
 - Résumé: ${analysis.jobSummary}
 - Compétences requises: ${analysis.requiredSkills.join(", ")}
-- Mots-clés à inclure: ${analysis.keywordsToInclude.join(", ")}
+- Mots-clés: ${analysis.keywordsToInclude.join(", ")}
 - Conseil de personnalisation: ${analysis.tailoringAdvice}
 
-## Profil du candidat
-- Nom: ${profile.name}
-- Titre: ${profile.title ?? "Non renseigné"}
-- Localisation: ${profile.location ?? "Non renseigné"}
-- Email: ${profile.email}
-- Téléphone: ${profile.phone ?? "Non renseigné"}
-${profile.website ? `- Site web: ${profile.website}` : ""}
-${profile.linkedin ? `- LinkedIn: ${profile.linkedin}` : ""}
-${profile.github ? `- GitHub: ${profile.github}` : ""}
+## Faits du profil (seule source autorisée)
+${formatFactsForPrompt(catalog)}
 
-## Résumé professionnel actuel
-${profile.summary ?? "Non renseigné"}
-
-## Expériences professionnelles
-${experiences
-  .map(
-    (e) => `
-### ${e.position} chez ${e.company} (${e.startDate} - ${e.endDate ?? "Présent"})
-${e.description ?? ""}
-Réalisations: ${e.achievements ? JSON.parse(e.achievements).join("; ") : "N/A"}
-Technologies: ${e.technologies ? JSON.parse(e.technologies).join(", ") : "N/A"}
-`
-  )
-  .join("\n")}
-
-## Formations
-${educations
-  .map(
-    (e) => `
-### ${e.degree} en ${e.field} - ${e.institution} (${e.startDate} - ${e.endDate ?? "En cours"})
-${e.description ?? ""}
-`
-  )
-  .join("\n")}
-
-## Compétences
-${userSkills.map((s) => `- ${s.name} (${s.category}, ${s.level}/5)`).join("\n")}
-
-## Projets
-${projects
-  .map(
-    (p) => `
-### ${p.name} (${p.type ?? "personal"})
-${p.role ? `Rôle: ${p.role}` : ""}
-${p.motivation ? `Contexte: ${p.motivation}` : ""}
-${p.description ?? ""}
-${p.impact ? `Impact: ${p.impact}` : ""}
-Tech: ${p.technologies ? JSON.parse(p.technologies).join(", ") : "N/A"}
-Points clés: ${p.highlights ? JSON.parse(p.highlights).join("; ") : "N/A"}
-`
-  )
-  .join("\n")}
-
-## Instructions
-Génère un CV personnalisé pour cette offre. Retourne un objet JSON avec cette structure exacte:
-{
-  "header": {
-    "name": "Nom complet",
-    "title": "Titre professionnel adapté au poste ciblé",
-    "email": "email",
-    "phone": "téléphone",
-    "location": "localisation",
-    "website": "url ou null",
-    "linkedin": "url ou null",
-    "github": "url ou null",
-    "image": null
-  },
-  "summary": "Un résumé professionnel de 3-4 phrases adapté spécifiquement à cette offre...",
-  "showPhoto": false,
-  "showProjects": true,
-  "headerBgColor": null,
-  "headerTextColor": null,
-  "headerBgImage": null,
-  "experience": [
-    {
-      "id": "exp1",
-      "company": "Nom Entreprise",
-      "position": "Titre du poste",
-      "location": "Ville",
-      "startDate": "2022-01",
-      "endDate": "Présent",
-      "bullets": [
-        "Réalisation orientée résultat adaptée au poste ciblé...",
-        "Autre réalisation utilisant les mots-clés de l'offre..."
-      ]
-    }
-  ],
-  "education": [
-    {
-      "id": "edu1",
-      "institution": "Université",
-      "degree": "Diplôme",
-      "field": "Domaine",
-      "startDate": "2018",
-      "endDate": "2022",
-      "description": "note optionnelle"
-    }
-  ],
-  "yearsExperience": "X ans d'expérience",
-  "skills": {
-    "Langages": ["TypeScript", "Python"],
-    "Frameworks": ["React", "Next.js"],
-    "Outils": ["Docker", "Git"],
-    "Autres": ["Agile", "CI/CD"]
-  },
-  "projects": [
-    {
-      "id": "proj1",
-      "name": "Nom du projet",
-      "description": "Description mettant en valeur la pertinence pour le poste",
-      "technologies": ["tech1", "tech2"],
-      "url": "url optionnelle ou null",
-      "type": "personal | open-source | freelance | hackathon | academic | side-project",
-      "role": "Rôle dans le projet (ex: Lead technique, Initiateur)",
-      "impact": "Résultats mesurables et métriques concrètes",
-      "highlights": ["Défi technique résolu 1", "Défi technique résolu 2"],
-      "motivation": "Contexte et motivation du projet",
-      "links": [{"label": "Repo", "url": "https://..."}, {"label": "Démo", "url": "https://..."}],
-      "linkedExperienceId": null,
-      "displayMode": "projects-section"
-    }
-  ],
-  "interests": ["Veille technologique", "Open source", "Musique"]
+## Règles
+- Chaque phrase que tu écris cite dans sourceIds les faits [F…] qui la justifient.
+- Reformule, réorganise et mets en avant ; n'ajoute RIEN qui ne figure pas dans les faits cités : aucune technologie, aucun outil, aucun chiffre, aucune responsabilité, aucun résultat, aucune taille d'équipe.
+- Un fait vague reste vague : ne le précise pas et ne le quantifie pas.
+- Une réalisation d'une expérience ne cite que les faits de cette expérience (ou d'un projet qui lui est rattaché). Idem pour un projet.
+- Les mots-clés de l'offre ne s'utilisent que s'ils correspondent à un fait réel.
+- Choisis les expériences et projets les plus pertinents ; ceux que tu omets restent disponibles pour le candidat.
+- Le CV tient sur une page : choisis au plus ${MAX_SECTION_PROJECTS} projets, du plus pertinent au moins pertinent.
+- Regroupe les compétences du candidat (et uniquement les siennes) par catégorie.
+- skillsToAcquire : compétences demandées par le poste que le candidat n'a PAS d'après les faits. C'est un conseil séparé du CV : ne les mentionne nulle part ailleurs.
+- Rédige en français.`;
 }
 
-Règles:
-- Reformule les bullet points pour mettre en avant les compétences recherchées dans l'offre
-- Utilise des verbes d'action et quantifie les résultats quand possible
-- Ordonne les compétences en mettant les plus pertinentes en premier
-- Le titre professionnel doit être adapté au poste ciblé
-- Inclus uniquement les projets les plus pertinents
-- Pour chaque projet, remplis le type, le rôle, l'impact mesurable, la motivation et les highlights techniques
-- Conserve les liens (links) du profil du candidat quand ils existent
-- linkedExperienceId et displayMode doivent rester null et "projects-section" respectivement
-- Le résumé doit se concentrer sur ce qui rend ce candidat idéal pour CE poste spécifique
-- yearsExperience doit résumer le nombre total d'années d'expérience professionnelle (ex: "5 ans d'expérience")
-- interests doit contenir 3 à 5 centres d'intérêts pertinents (loisirs, passions, activités)
-- Rédige en français
+export function buildVerificationPrompt(claims: Claim[], catalog: FactCatalog): string {
+  return `Tu vérifies un CV généré. Pour chaque affirmation, indique si elle est entièrement justifiée par les faits qu'elle cite.
 
-Retourne UNIQUEMENT le JSON, sans bloc de code markdown.`;
+## Faits du profil
+${catalog.facts.map((f) => `[${f.id}] ${f.text}`).join("\n")}
+
+## Affirmations à vérifier
+${claims.map((c) => `[${c.id}] « ${c.text} » — sources citées : ${c.sourceIds.join(", ")}`).join("\n")}
+
+## Critères
+- Justifiée : reformulation, synthèse ou généralisation de ce que disent les faits cités.
+- Non justifiée : ajoute une technologie, un outil, un chiffre, une responsabilité, un résultat, un contexte ou une précision absents des faits cités, ou exagère leur portée.
+- En cas de doute, considère l'affirmation comme non justifiée.
+- Donne un verdict pour chaque affirmation, avec une raison courte en français quand elle n'est pas justifiée.`;
 }
 
 export function buildCoverLetterGenerationPrompt(
@@ -318,26 +176,7 @@ ${educations
   .join("\n")}
 
 ## Instructions
-Génère une lettre de motivation personnalisée. Retourne un objet JSON avec cette structure exacte:
-{
-  "recipient": {
-    "companyName": "Nom de l'entreprise",
-    "contactName": null,
-    "contactTitle": null,
-    "address": null,
-    "city": null
-  },
-  "senderCity": "Ville du candidat",
-  "date": "24 février 2026",
-  "subject": "Objet : Candidature au poste de ...",
-  "opening": "Madame, Monsieur,",
-  "introduction": "Premier paragraphe: pourquoi j'écris, le poste visé, comment j'ai découvert l'offre",
-  "motivation": "Deuxième paragraphe: pourquoi cette entreprise spécifiquement, ses valeurs, sa mission",
-  "skillsMatch": "Troisième paragraphe: mes compétences et expériences les plus pertinentes pour ce poste",
-  "conclusion": "Quatrième paragraphe: appel à l'action, disponibilité pour un entretien",
-  "closing": "Veuillez agréer, Madame, Monsieur, l'expression de mes salutations distinguées.",
-  "senderName": "Prénom Nom"
-}
+Génère une lettre de motivation personnalisée.
 
 Règles:
 - Ton formel et professionnel
@@ -350,7 +189,5 @@ Règles:
 - La lettre doit compléter le CV, pas le répéter
 - senderCity doit être la localisation du candidat: "${profile.location ?? ""}"
 - senderName doit être le nom complet du candidat: "${profile.name ?? ""}"
-- Rédige en français
-
-Retourne UNIQUEMENT le JSON, sans bloc de code markdown.`;
+- Rédige en français`;
 }

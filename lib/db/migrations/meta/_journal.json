@@ -8,6 +8,20 @@
       "when": 1771923593914,
       "tag": "0000_add-project-enrichment",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1790334997284,
+      "tag": "0001_add-cover-letter-data",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1790656794419,
+      "tag": "0002_add-generation-report",
+      "breakpoints": true
     }
   ]
 }
