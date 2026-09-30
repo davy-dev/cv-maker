@@ -168,21 +168,19 @@ const styles = StyleSheet.create({
   bulletText: { flex: 1, fontSize: 8, color: colors.gray700 },
 
   // Projects full-width section
+  // Pinned to the bottom of the page, in the space left above the footer
   projectsFullWidth: {
+    marginTop: "auto",
     paddingHorizontal: 24,
     paddingTop: 6,
     paddingBottom: 8,
     borderTopWidth: 1,
     borderTopColor: colors.gray300,
   },
-  projectsGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 6,
-  },
+  projectsGrid: { flexDirection: "row", gap: 6 },
   // Projects — border-l border-gray-200
   projectItem: {
-    width: "31.5%",
+    flex: 1,
     paddingLeft: 8,
     borderLeftWidth: 1,
     borderLeftColor: colors.gray200,
@@ -239,6 +237,11 @@ export function ClassicPdfTemplate({ data }: { data: CvData }) {
             <Image src={toImageSrc(data.headerBgImage)} style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, objectFit: "cover", objectPosition: `${(data.headerBgImagePosition ?? { x: 50, y: 50 }).x}% ${(data.headerBgImagePosition ?? { x: 50, y: 50 }).y}%` }} />
           )}
           <View style={[styles.headerCenter, { backgroundColor: "transparent" }]}>
+            {data.showPhoto && data.header.image && (
+              <View style={{ alignSelf: "center", width: 56, height: 56, borderRadius: 28, overflow: "hidden", borderWidth: 1, borderColor: "#d1d5db", marginBottom: 8 }}>
+                <Image src={toImageSrc(data.header.image)} style={{ width: 54, height: 54, borderRadius: 27, objectFit: "cover" }} />
+              </View>
+            )}
             <Text style={[styles.name, { color: hText }]}>{data.header.name}</Text>
             <Text style={[styles.title, { color: hSub }]}>{data.header.title}</Text>
             <View style={styles.contactRow}>
@@ -275,7 +278,7 @@ export function ClassicPdfTemplate({ data }: { data: CvData }) {
               {/* Summary */}
               {data.summary && (
                 <View style={styles.sectionSpacing}>
-                  <View style={styles.sectionTitleRow}>
+                  <View style={styles.sectionTitleRow} minPresenceAhead={60}>
                     <SummaryIcon size={9} color={colors.gray900} />
                     <Text style={styles.sectionTitleText}>Profil professionnel</Text>
                   </View>
@@ -286,14 +289,14 @@ export function ClassicPdfTemplate({ data }: { data: CvData }) {
               {/* Experience */}
               {data.experience.length > 0 && (
                 <View style={styles.sectionSpacing}>
-                  <View style={styles.sectionTitleRow}>
+                  <View style={styles.sectionTitleRow} minPresenceAhead={60}>
                     <ExperienceIcon size={9} color={colors.gray900} />
                     <Text style={styles.sectionTitleText}>Experience professionnelle</Text>
                   </View>
                   {data.experience.map((exp) => {
                     const linkedProjects = getProjectsForExperience(data, exp.id);
                     return (
-                      <View key={exp.id} style={styles.expItem}>
+                      <View key={exp.id} wrap={false} style={styles.expItem}>
                         <Text style={styles.expTitle}>{exp.position}</Text>
                         <View style={styles.expMeta}>
                           <Text style={styles.expSub}>
@@ -312,7 +315,7 @@ export function ClassicPdfTemplate({ data }: { data: CvData }) {
                         {linkedProjects.length > 0 && (
                           <View style={{ marginTop: 4, paddingLeft: 8, borderLeftWidth: 1.5, borderLeftColor: colors.gray300 }}>
                             {linkedProjects.map((project) => (
-                              <View key={project.id} style={{ marginBottom: 4 }}>
+                              <View key={project.id} wrap={false} style={{ marginBottom: 4 }}>
                                 <Text style={styles.projectTitle}>
                                   {project.name}
                                   {project.type && (
@@ -361,12 +364,12 @@ export function ClassicPdfTemplate({ data }: { data: CvData }) {
               {/* Education */}
               {data.education.length > 0 && (
                 <View style={styles.sectionSpacing}>
-                  <View style={styles.sectionTitleRowSide}>
+                  <View style={styles.sectionTitleRowSide} minPresenceAhead={60}>
                     <EducationIcon size={8} color={colors.gray900} />
                     <Text style={styles.sectionTitleTextSide}>Formation</Text>
                   </View>
                   {data.education.map((edu) => (
-                    <View key={edu.id} style={styles.eduItem}>
+                    <View key={edu.id} wrap={false} style={styles.eduItem}>
                       <Text style={styles.eduTitle}>
                         {edu.degree}{edu.field ? ` en ${edu.field}` : ""}
                       </Text>
@@ -384,7 +387,7 @@ export function ClassicPdfTemplate({ data }: { data: CvData }) {
               {/* Skills */}
               {Object.keys(data.skills).length > 0 && (
                 <View style={styles.sectionSpacing}>
-                  <View style={styles.sectionTitleRowSide}>
+                  <View style={styles.sectionTitleRowSide} minPresenceAhead={60}>
                     <SkillsIcon size={8} color={colors.gray900} />
                     <Text style={styles.sectionTitleTextSide}>Competences</Text>
                   </View>
@@ -400,7 +403,7 @@ export function ClassicPdfTemplate({ data }: { data: CvData }) {
               {/* Interests */}
               {data.interests && data.interests.length > 0 && (
                 <View style={styles.sectionSpacing}>
-                  <View style={styles.sectionTitleRowSide}>
+                  <View style={styles.sectionTitleRowSide} minPresenceAhead={60}>
                     <InterestsIcon size={8} color={colors.gray900} />
                     <Text style={styles.sectionTitleTextSide}>Centres d&apos;interet</Text>
                   </View>
@@ -415,7 +418,7 @@ export function ClassicPdfTemplate({ data }: { data: CvData }) {
           {/* Projects — full-width */}
           {data.showProjects !== false && getProjectsForSection(data).length > 0 && (
             <View style={styles.projectsFullWidth}>
-              <View style={styles.sectionTitleRow}>
+              <View style={styles.sectionTitleRow} minPresenceAhead={60}>
                 <ProjectsIcon size={9} color={colors.gray900} />
                 <Text style={styles.sectionTitleText}>Projets</Text>
               </View>
@@ -423,7 +426,7 @@ export function ClassicPdfTemplate({ data }: { data: CvData }) {
                 {getProjectsForSection(data).map((project) => {
                   const companyName = getLinkedCompanyName(data, project);
                   return (
-                    <View key={project.id} style={styles.projectItem}>
+                    <View key={project.id} wrap={false} style={styles.projectItem}>
                       {project.type && (
                         <View style={{ flexDirection: "row", justifyContent: "flex-end", marginBottom: 2 }}>
                           <Text style={styles.techText}>

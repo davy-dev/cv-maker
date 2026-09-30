@@ -1,10 +1,10 @@
-import { auth } from "@/lib/auth/auth";
+import { verifySession } from "@/lib/auth/session";
 import { db } from "@/lib/db";
-import { generatedCvs } from "@/lib/db/schema";
+import { generatedCvs, users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
-import { CvPreview } from "@/components/cv/cv-preview";
+import { CvPdfPreview } from "@/components/cv/cv-pdf-preview";
 import { PdfDownloadButton } from "@/components/pdf/pdf-download-button";
 import { CoverLetterPdfDownloadButton } from "@/components/pdf/cover-letter-pdf-download-button";
 import { CoverLetterPreview } from "@/components/cover-letter/cover-letter-preview";
@@ -12,20 +12,15 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import type { CvData, CoverLetterData, TemplateId } from "@/types/cv";
 
-interface PdfPageProps {
-  params: Promise<{ id: string }>;
-}
-
-export default async function PdfPage({ params }: PdfPageProps) {
+export default async function PdfPage({ params }: PageProps<"/cv/[id]/pdf">) {
   const { id } = await params;
-  const session = await auth();
-  if (!session?.user?.id) return null;
+  const userId = await verifySession();
 
   const cv = await db.query.generatedCvs.findFirst({
     where: eq(generatedCvs.id, id),
   });
 
-  if (!cv || cv.userId !== session.user.id) {
+  if (!cv || cv.userId !== userId) {
     notFound();
   }
 
@@ -37,6 +32,13 @@ export default async function PdfPage({ params }: PdfPageProps) {
   } catch {
     notFound();
   }
+
+  // The CV always shows the current profile photo, not the one known when it was generated
+  const profile = await db.query.users.findFirst({
+    where: eq(users.id, userId),
+    columns: { image: true },
+  });
+  cvData.header.image = profile?.image ?? null;
 
   const templateId = cv.templateId as TemplateId;
   const fileSlug = cv.title.replace(/[^a-zA-Z0-9]/g, "_");
@@ -81,7 +83,7 @@ export default async function PdfPage({ params }: PdfPageProps) {
       <Card>
         <CardContent className="p-6 flex justify-center">
           <div style={{ maxWidth: "595px", width: "100%" }}>
-            <CvPreview data={cvData} templateId={templateId} />
+            <CvPdfPreview data={cvData} templateId={templateId} />
           </div>
         </CardContent>
       </Card>

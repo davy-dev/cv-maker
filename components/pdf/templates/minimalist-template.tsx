@@ -152,20 +152,18 @@ const styles = StyleSheet.create({
   },
 
   // Projects full-width section
+  // Pinned to the bottom of the page, in the space left above the footer
   projectsFullWidth: {
+    marginTop: "auto",
     paddingHorizontal: 24,
     paddingTop: 6,
     paddingBottom: 8,
     borderTopWidth: 1,
     borderTopColor: colors.gray100,
   },
-  projectsGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 6,
-  },
+  projectsGrid: { flexDirection: "row", gap: 6 },
   // Projects card
-  projectItem: { width: "31.5%" },
+  projectItem: { flex: 1 },
   // font-medium text-gray-900 text-[9px]
   projectTitle: { fontWeight: "bold", color: colors.gray900, fontSize: 9 },
   // text-[8px] text-gray-500 mt-0.5
@@ -238,29 +236,34 @@ export function MinimalistPdfTemplate({ data }: { data: CvData }) {
           {data.headerBgImage && (
             <Image src={toImageSrc(data.headerBgImage)} style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, objectFit: "cover", objectPosition: `${(data.headerBgImagePosition ?? { x: 50, y: 50 }).x}% ${(data.headerBgImagePosition ?? { x: 50, y: 50 }).y}%` }} />
           )}
-          <View style={[styles.header, { backgroundColor: "transparent" }]}>
-            <Text style={[styles.name, { color: hText }]}>{data.header.name}</Text>
-            <Text style={[styles.title, { color: hSub }]}>{data.header.title}</Text>
-            <View style={styles.contactRow}>
-              {data.header.email && (
-                <View style={styles.contactItemRow}>
-                  <EmailIcon size={8} color={hSub} />
-                  <Text style={{ color: hSub }}>{data.header.email}</Text>
-                </View>
-              )}
-              {data.header.phone && (
-                <View style={styles.contactItemRow}>
-                  <PhoneIcon size={8} color={hSub} />
-                  <Text style={{ color: hSub }}>{data.header.phone}</Text>
-                </View>
-              )}
-              {data.header.location && (
-                <View style={styles.contactItemRow}>
-                  <LocationIcon size={8} color={hSub} />
-                  <Text style={{ color: hSub }}>{data.header.location}</Text>
-                </View>
-              )}
+          <View style={[styles.header, { backgroundColor: "transparent", flexDirection: "row", alignItems: "center", gap: 16 }]}>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.name, { color: hText }]}>{data.header.name}</Text>
+              <Text style={[styles.title, { color: hSub }]}>{data.header.title}</Text>
+              <View style={styles.contactRow}>
+                {data.header.email && (
+                  <View style={styles.contactItemRow}>
+                    <EmailIcon size={8} color={hSub} />
+                    <Text style={{ color: hSub }}>{data.header.email}</Text>
+                  </View>
+                )}
+                {data.header.phone && (
+                  <View style={styles.contactItemRow}>
+                    <PhoneIcon size={8} color={hSub} />
+                    <Text style={{ color: hSub }}>{data.header.phone}</Text>
+                  </View>
+                )}
+                {data.header.location && (
+                  <View style={styles.contactItemRow}>
+                    <LocationIcon size={8} color={hSub} />
+                    <Text style={{ color: hSub }}>{data.header.location}</Text>
+                  </View>
+                )}
+              </View>
             </View>
+            {data.showPhoto && data.header.image && (
+              <Image src={toImageSrc(data.header.image)} style={{ width: 48, height: 48, borderRadius: 24, objectFit: "cover" }} />
+            )}
           </View>
         </View>
 
@@ -280,14 +283,14 @@ export function MinimalistPdfTemplate({ data }: { data: CvData }) {
               {/* Experience */}
               {data.experience.length > 0 && (
                 <View style={styles.sectionSpacing}>
-                  <View style={styles.sectionTitleRow}>
+                  <View style={styles.sectionTitleRow} minPresenceAhead={60}>
                     <ExperienceIcon size={8} color={colors.gray400} />
                     <Text style={styles.sectionTitleText}>Experience</Text>
                   </View>
                   {data.experience.map((exp) => {
                     const linkedProjects = getProjectsForExperience(data, exp.id);
                     return (
-                      <View key={exp.id} style={styles.expItem}>
+                      <View key={exp.id} wrap={false} style={styles.expItem}>
                         <View style={styles.expRow}>
                           <Text style={styles.expPosition}>{exp.position}</Text>
                           <Text style={styles.expDate}>{exp.startDate} - {exp.endDate}</Text>
@@ -300,7 +303,7 @@ export function MinimalistPdfTemplate({ data }: { data: CvData }) {
                         ))}
                         {linkedProjects.length > 0 &&
                           linkedProjects.map((project) => (
-                            <View key={project.id} style={styles.linkedProjectBlock}>
+                            <View key={project.id} wrap={false} style={styles.linkedProjectBlock}>
                               <Text style={styles.linkedProjectTitle}>
                                 {project.name}
                                 {project.type && (
@@ -337,12 +340,12 @@ export function MinimalistPdfTemplate({ data }: { data: CvData }) {
               {/* Education */}
               {data.education.length > 0 && (
                 <View style={styles.sectionSpacing}>
-                  <View style={styles.sectionTitleRowSide}>
+                  <View style={styles.sectionTitleRowSide} minPresenceAhead={60}>
                     <EducationIcon size={7} color={colors.gray400} />
                     <Text style={styles.sectionTitleTextSide}>Formation</Text>
                   </View>
                   {data.education.map((edu) => (
-                    <View key={edu.id} style={styles.eduItem}>
+                    <View key={edu.id} wrap={false} style={styles.eduItem}>
                       <Text style={styles.eduTitle}>{edu.degree}</Text>
                       <Text style={styles.eduInstitution}>{edu.institution}</Text>
                       <Text style={styles.eduYear}>
@@ -358,7 +361,7 @@ export function MinimalistPdfTemplate({ data }: { data: CvData }) {
               {/* Skills */}
               {Object.keys(data.skills).length > 0 && (
                 <View style={styles.sectionSpacing}>
-                  <View style={styles.sectionTitleRowSide}>
+                  <View style={styles.sectionTitleRowSide} minPresenceAhead={60}>
                     <SkillsIcon size={7} color={colors.gray400} />
                     <Text style={styles.sectionTitleTextSide}>Competences</Text>
                   </View>
@@ -377,7 +380,7 @@ export function MinimalistPdfTemplate({ data }: { data: CvData }) {
               {/* Interests */}
               {data.interests && data.interests.length > 0 && (
                 <View style={styles.sectionSpacing}>
-                  <View style={styles.sectionTitleRowSide}>
+                  <View style={styles.sectionTitleRowSide} minPresenceAhead={60}>
                     <InterestsIcon size={7} color={colors.gray400} />
                     <Text style={styles.sectionTitleTextSide}>Interets</Text>
                   </View>
@@ -392,7 +395,7 @@ export function MinimalistPdfTemplate({ data }: { data: CvData }) {
           {/* Projects — full-width */}
           {data.showProjects !== false && getProjectsForSection(data).length > 0 && (
             <View style={styles.projectsFullWidth}>
-              <View style={styles.sectionTitleRow}>
+              <View style={styles.sectionTitleRow} minPresenceAhead={60}>
                 <ProjectsIcon size={8} color={colors.gray400} />
                 <Text style={styles.sectionTitleText}>Projets</Text>
               </View>
@@ -400,7 +403,7 @@ export function MinimalistPdfTemplate({ data }: { data: CvData }) {
                 {getProjectsForSection(data).map((project) => {
                   const companyName = getLinkedCompanyName(data, project);
                   return (
-                    <View key={project.id} style={styles.projectItem}>
+                    <View key={project.id} wrap={false} style={styles.projectItem}>
                       {project.type && (
                         <View style={{ flexDirection: "row", justifyContent: "flex-end", marginBottom: 2 }}>
                           <Text style={styles.projectTypeLabel}>
