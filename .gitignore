@@ -45,3 +45,10 @@ next-env.d.ts
 
 # uploads
 /public/uploads/
+
+# testing
+/coverage
+/playwright-report
+/test-results
+/blob-report
+/playwright/.cache

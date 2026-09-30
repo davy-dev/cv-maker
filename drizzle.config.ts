@@ -5,6 +5,6 @@ export default defineConfig({
   out: "./lib/db/migrations",
   dialect: "sqlite",
   dbCredentials: {
-    url: "./data/cv-maker.db",
+    url: process.env.DATABASE_PATH ?? "./data/cv-maker.db",
   },
 });
