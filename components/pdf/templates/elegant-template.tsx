@@ -237,18 +237,20 @@ const styles = StyleSheet.create({
   bulletText: { flex: 1, fontSize: 8, color: colors.slate600 },
 
   // Projects full-width section
+  // Pinned to the bottom of the page, in the space left above the footer
   projectsFullWidth: {
+    marginTop: "auto",
     paddingHorizontal: 16,
     paddingTop: 6,
     paddingBottom: 8,
     borderTopWidth: 1,
     borderTopColor: colors.slate200,
   },
-  // Projects — grid 3 cols
-  projectsGrid: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
+  // Projects — at most 2 (applyVisibility): 1 card takes the full width, 2 share it equally
+  projectsGrid: { flexDirection: "row", gap: 6 },
   // bg-slate-50 border border-slate-200 rounded p-2
   projectItem: {
-    width: "31.5%",
+    flex: 1,
     backgroundColor: colors.slate50,
     borderWidth: 1,
     borderColor: colors.slate200,
@@ -425,9 +427,9 @@ export function ElegantPdfTemplate({ data }: { data: CvData }) {
               {/* Summary */}
               {data.summary && (
                 <View style={styles.sectionSpacing}>
-                  <View style={styles.sectionTitleRow}>
+                  <View style={styles.sectionTitleRow} minPresenceAhead={60}>
                     <SummaryIcon size={10} color={colors.slate800} />
-                    <Text style={styles.sectionTitleText}>A propos</Text>
+                    <Text style={styles.sectionTitleText}>À propos</Text>
                   </View>
                   <Text style={styles.summaryText}>{data.summary}</Text>
                 </View>
@@ -436,12 +438,12 @@ export function ElegantPdfTemplate({ data }: { data: CvData }) {
               {/* Experience */}
               {data.experience.length > 0 && (
                 <View style={styles.sectionSpacing}>
-                  <View style={styles.sectionTitleRow}>
+                  <View style={styles.sectionTitleRow} minPresenceAhead={60}>
                     <ExperienceIcon size={10} color={colors.slate800} />
-                    <Text style={styles.sectionTitleText}>Experience</Text>
+                    <Text style={styles.sectionTitleText}>Expérience</Text>
                   </View>
                   {data.experience.map((exp) => (
-                    <View key={exp.id} style={styles.expItem}>
+                    <View key={exp.id} wrap={false} style={styles.expItem}>
                       <Text style={styles.expTitle}>{exp.position}</Text>
                       <View style={styles.expMeta}>
                         <Text style={styles.expCompany}>{exp.company}</Text>
@@ -464,7 +466,7 @@ export function ElegantPdfTemplate({ data }: { data: CvData }) {
                             Projets associés
                           </Text>
                           {getProjectsForExperience(data, exp.id).map((project) => (
-                            <View key={project.id} style={{ marginBottom: 4, paddingLeft: 4 }}>
+                            <View key={project.id} wrap={false} style={{ marginBottom: 4, paddingLeft: 4 }}>
                               <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginBottom: 1 }}>
                                 <Text style={{ fontSize: 8, fontWeight: "bold", color: colors.slate800 }}>
                                   {project.name}
@@ -512,9 +514,9 @@ export function ElegantPdfTemplate({ data }: { data: CvData }) {
               {/* Skills */}
               {Object.keys(data.skills).length > 0 && (
                 <View style={styles.sectionSpacing}>
-                  <View style={styles.sectionTitleRowSide}>
+                  <View style={styles.sectionTitleRowSide} minPresenceAhead={60}>
                     <SkillsIcon size={10} color={colors.slate800} />
-                    <Text style={styles.sectionTitleTextSide}>Competences</Text>
+                    <Text style={styles.sectionTitleTextSide}>Compétences</Text>
                   </View>
                   {Object.entries(data.skills).map(([cat, skillList]) => (
                     <View key={cat} style={styles.skillCategory}>
@@ -532,12 +534,12 @@ export function ElegantPdfTemplate({ data }: { data: CvData }) {
               {/* Education */}
               {data.education.length > 0 && (
                 <View style={styles.sectionSpacing}>
-                  <View style={styles.sectionTitleRowSide}>
+                  <View style={styles.sectionTitleRowSide} minPresenceAhead={60}>
                     <EducationIcon size={10} color={colors.slate800} />
                     <Text style={styles.sectionTitleTextSide}>Formation</Text>
                   </View>
                   {data.education.map((edu) => (
-                    <View key={edu.id} style={styles.eduItem}>
+                    <View key={edu.id} wrap={false} style={styles.eduItem}>
                       <Text style={styles.eduDegree}>{edu.degree}</Text>
                       <Text style={styles.eduInstitution}>{edu.institution}</Text>
                       <Text style={styles.eduYear}>
@@ -553,9 +555,9 @@ export function ElegantPdfTemplate({ data }: { data: CvData }) {
               {/* Interests */}
               {data.interests && data.interests.length > 0 && (
                 <View style={styles.sectionSpacing}>
-                  <View style={styles.sectionTitleRowSide}>
+                  <View style={styles.sectionTitleRowSide} minPresenceAhead={60}>
                     <InterestsIcon size={10} color={colors.slate800} />
-                    <Text style={styles.sectionTitleTextSide}>Centres d&apos;interet</Text>
+                    <Text style={styles.sectionTitleTextSide}>Centres d&apos;intérêt</Text>
                   </View>
                   <View style={styles.tagsRow}>
                     {data.interests.map((interest, i) => (
@@ -570,7 +572,7 @@ export function ElegantPdfTemplate({ data }: { data: CvData }) {
           {/* Projects — full-width */}
           {data.showProjects !== false && getProjectsForSection(data).length > 0 && (
             <View style={styles.projectsFullWidth}>
-              <View style={styles.sectionTitleRow}>
+              <View style={styles.sectionTitleRow} minPresenceAhead={60}>
                 <ProjectsIcon size={10} color={colors.slate800} />
                 <Text style={styles.sectionTitleText}>Projets</Text>
               </View>
@@ -578,7 +580,7 @@ export function ElegantPdfTemplate({ data }: { data: CvData }) {
                 {getProjectsForSection(data).map((project) => {
                   const companyName = getLinkedCompanyName(data, project);
                   return (
-                    <View key={project.id} style={styles.projectItem}>
+                    <View key={project.id} wrap={false} style={styles.projectItem}>
                       {project.type && (
                         <View style={{ flexDirection: "row", justifyContent: "flex-end", marginBottom: 2 }}>
                           <Text style={{ fontSize: 6.5, color: colors.blue500, backgroundColor: colors.blue200, borderRadius: 4, paddingHorizontal: 4, paddingVertical: 1 }}>

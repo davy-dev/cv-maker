@@ -1,4 +1,4 @@
-import { auth } from "@/lib/auth/auth";
+import { verifySession } from "@/lib/auth/session";
 import { db } from "@/lib/db";
 import { generatedCvs } from "@/lib/db/schema";
 import { eq, desc } from "drizzle-orm";
@@ -9,13 +9,12 @@ import { Badge } from "@/components/ui/badge";
 import { DeleteCvButton } from "@/components/cv/delete-cv-button";
 
 export default async function CvListPage() {
-  const session = await auth();
-  if (!session?.user?.id) return null;
+  const userId = await verifySession();
 
   const cvs = await db
     .select()
     .from(generatedCvs)
-    .where(eq(generatedCvs.userId, session.user.id))
+    .where(eq(generatedCvs.userId, userId))
     .orderBy(desc(generatedCvs.createdAt));
 
   return (

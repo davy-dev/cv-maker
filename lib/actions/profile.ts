@@ -2,8 +2,8 @@
 
 import { db } from "@/lib/db";
 import { users, workExperiences, education } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
-import { auth } from "@/lib/auth/auth";
+import { and, eq } from "drizzle-orm";
+import { requireUserId } from "@/lib/auth/session";
 import { createId } from "@paralleldrive/cuid2";
 import {
   profileSchema,
@@ -15,16 +15,10 @@ import {
 } from "@/lib/validators";
 import { revalidatePath } from "next/cache";
 
-async function getUserId() {
-  const session = await auth();
-  if (!session?.user?.id) throw new Error("Non authentifié");
-  return session.user.id;
-}
-
 // --- Profile ---
 
 export async function updateProfile(data: ProfileInput) {
-  const userId = await getUserId();
+  const userId = await requireUserId();
   const parsed = profileSchema.safeParse(data);
   if (!parsed.success) return { error: parsed.error.issues[0].message };
 
@@ -50,7 +44,7 @@ export async function updateProfile(data: ProfileInput) {
 // --- Work Experiences ---
 
 export async function addExperience(data: WorkExperienceInput) {
-  const userId = await getUserId();
+  const userId = await requireUserId();
   const parsed = workExperienceSchema.safeParse(data);
   if (!parsed.success) return { error: parsed.error.issues[0].message };
 
@@ -85,11 +79,11 @@ export async function updateExperience(
   id: string,
   data: WorkExperienceInput
 ) {
-  const userId = await getUserId();
+  const userId = await requireUserId();
   const parsed = workExperienceSchema.safeParse(data);
   if (!parsed.success) return { error: parsed.error.issues[0].message };
 
-  await db
+  const result = await db
     .update(workExperiences)
     .set({
       company: parsed.data.company,
@@ -105,15 +99,23 @@ export async function updateExperience(
         ? JSON.stringify(parsed.data.technologies)
         : null,
     })
-    .where(eq(workExperiences.id, id));
+    .where(
+      and(eq(workExperiences.id, id), eq(workExperiences.userId, userId))
+    );
+  if (result.changes === 0) return { error: "Expérience non trouvée" };
 
   revalidatePath("/profile");
   return { success: true };
 }
 
 export async function deleteExperience(id: string) {
-  await getUserId();
-  await db.delete(workExperiences).where(eq(workExperiences.id, id));
+  const userId = await requireUserId();
+  const result = await db
+    .delete(workExperiences)
+    .where(
+      and(eq(workExperiences.id, id), eq(workExperiences.userId, userId))
+    );
+  if (result.changes === 0) return { error: "Expérience non trouvée" };
   revalidatePath("/profile");
   return { success: true };
 }
@@ -121,7 +123,7 @@ export async function deleteExperience(id: string) {
 // --- Education ---
 
 export async function addEducation(data: EducationInput) {
-  const userId = await getUserId();
+  const userId = await requireUserId();
   const parsed = educationSchema.safeParse(data);
   if (!parsed.success) return { error: parsed.error.issues[0].message };
 
@@ -147,11 +149,11 @@ export async function addEducation(data: EducationInput) {
 }
 
 export async function updateEducation(id: string, data: EducationInput) {
-  await getUserId();
+  const userId = await requireUserId();
   const parsed = educationSchema.safeParse(data);
   if (!parsed.success) return { error: parsed.error.issues[0].message };
 
-  await db
+  const result = await db
     .update(education)
     .set({
       institution: parsed.data.institution,
@@ -161,15 +163,19 @@ export async function updateEducation(id: string, data: EducationInput) {
       endDate: parsed.data.endDate || null,
       description: parsed.data.description || null,
     })
-    .where(eq(education.id, id));
+    .where(and(eq(education.id, id), eq(education.userId, userId)));
+  if (result.changes === 0) return { error: "Formation non trouvée" };
 
   revalidatePath("/profile");
   return { success: true };
 }
 
 export async function deleteEducation(id: string) {
-  await getUserId();
-  await db.delete(education).where(eq(education.id, id));
+  const userId = await requireUserId();
+  const result = await db
+    .delete(education)
+    .where(and(eq(education.id, id), eq(education.userId, userId)));
+  if (result.changes === 0) return { error: "Formation non trouvée" };
   revalidatePath("/profile");
   return { success: true };
 }

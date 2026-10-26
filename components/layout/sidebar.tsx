@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import type { ReactNode } from "react";
+import type { Route } from "next";
 
 const navItems = [
   { href: "/dashboard", label: "Tableau de bord", icon: "home" },
@@ -11,7 +12,7 @@ const navItems = [
   { href: "/skills", label: "Compétences", icon: "star" },
   { href: "/cv", label: "Mes CVs", icon: "file" },
   { href: "/cv/new", label: "Nouveau CV", icon: "plus" },
-];
+] satisfies { href: Route; label: string; icon: string }[];
 
 const icons: Record<string, ReactNode> = {
   home: (

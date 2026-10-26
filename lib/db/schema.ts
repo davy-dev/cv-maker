@@ -144,6 +144,8 @@ export const generatedCvs = sqliteTable("generated_cvs", {
   missingSkills: text("missing_skills"),
   cvData: text("cv_data").notNull(),
   coverLetterData: text("cover_letter_data"),
+  // What verification removed and the skills to acquire (GenerationReport, JSON)
+  generationReport: text("generation_report"),
   templateId: text("template_id").notNull().default("modern"),
   status: text("status").notNull().default("draft"),
   createdAt: integer("created_at", { mode: "timestamp" })

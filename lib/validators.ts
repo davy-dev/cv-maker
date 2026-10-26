@@ -30,6 +30,8 @@ export const skillSchema = z.object({
   category: z.enum([
     "language",
     "framework",
+    "library",
+    "runtime",
     "tool",
     "soft_skill",
     "database",
@@ -103,9 +105,16 @@ export const analyzeJobSchema = z.object({
 });
 
 // CV Generation
+export const templateIdSchema = z.enum([
+  "modern",
+  "classic",
+  "minimalist",
+  "elegant",
+]);
+
 export const generateCvSchema = z.object({
   cvId: z.string().min(1),
-  templateId: z.enum(["modern", "classic", "minimalist"]),
+  templateId: templateIdSchema,
 });
 
 // Cover Letter Generation

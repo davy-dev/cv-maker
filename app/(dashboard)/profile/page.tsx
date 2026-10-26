@@ -1,4 +1,4 @@
-import { auth } from "@/lib/auth/auth";
+import { verifySession } from "@/lib/auth/session";
 import { db } from "@/lib/db";
 import { users, workExperiences, education } from "@/lib/db/schema";
 import { eq, asc } from "drizzle-orm";
@@ -9,11 +9,10 @@ import { ExperienceList } from "@/components/profile/experience-list";
 import { EducationList } from "@/components/profile/education-list";
 
 export default async function ProfilePage() {
-  const session = await auth();
-  if (!session?.user?.id) return null;
+  const userId = await verifySession();
 
   const user = await db.query.users.findFirst({
-    where: eq(users.id, session.user.id),
+    where: eq(users.id, userId),
   });
 
   if (!user) return null;
@@ -21,13 +20,13 @@ export default async function ProfilePage() {
   const experiences = await db
     .select()
     .from(workExperiences)
-    .where(eq(workExperiences.userId, session.user.id))
+    .where(eq(workExperiences.userId, userId))
     .orderBy(asc(workExperiences.sortOrder));
 
   const educations = await db
     .select()
     .from(education)
-    .where(eq(education.userId, session.user.id))
+    .where(eq(education.userId, userId))
     .orderBy(asc(education.sortOrder));
 
   return (

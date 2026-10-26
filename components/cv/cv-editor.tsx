@@ -7,10 +7,14 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { CvPreview } from "./cv-preview";
-import type { CvData, CvExperience, CvEducation, CvProject, TemplateId, ProjectType, ProjectDisplayMode, ImagePosition } from "@/types/cv";
+import { CvPdfPreview } from "./cv-pdf-preview";
+import { PdfDownloadButton } from "@/components/pdf/pdf-download-button";
+import { GenerationReportPanel } from "./generation-report";
+import { useRouter } from "next/navigation";
+import type { CvData, CvExperience, CvEducation, CvProject, CvSection, GenerationReport, TemplateId, ProjectType, ProjectDisplayMode, ImagePosition } from "@/types/cv";
 import Link from "next/link";
 import { useDragReposition } from "@/hooks/use-drag-reposition";
+import { MAX_SECTION_PROJECTS, isInProjectsSection } from "@/lib/cv/visibility";
 
 // --- Reducer ---
 
@@ -45,6 +49,11 @@ type CvAction =
   | { type: "SET_INTEREST"; index: number; value: string }
   | { type: "TOGGLE_SHOW_PHOTO" }
   | { type: "TOGGLE_SHOW_PROJECTS" }
+  | { type: "TOGGLE_SECTION"; section: CvSection }
+  | { type: "TOGGLE_EXPERIENCE_HIDDEN"; index: number }
+  | { type: "TOGGLE_EDUCATION_HIDDEN"; index: number }
+  | { type: "TOGGLE_PROJECT_HIDDEN"; index: number }
+  | { type: "TOGGLE_SKILL_CATEGORY_HIDDEN"; category: string }
   | { type: "SET_HEADER_BG_COLOR"; value: string | null }
   | { type: "SET_HEADER_TEXT_COLOR"; value: string | null }
   | { type: "SET_HEADER_BG_IMAGE"; value: string | null }
@@ -156,7 +165,11 @@ const cvActionHandlers: Record<CvAction["type"], (state: CvData, action: CvActio
     const existing = skills[a.oldCategory] || [];
     delete skills[a.oldCategory];
     skills[a.newCategory] = existing;
-    return { ...state, skills };
+    // A hidden category stays hidden under its new name
+    const hiddenSkillCategories = state.hiddenSkillCategories?.map((c) =>
+      c === a.oldCategory ? a.newCategory : c
+    );
+    return { ...state, skills, hiddenSkillCategories };
   },
   ADD_PROJECT: (state) => ({
     ...state,
@@ -267,6 +280,32 @@ const cvActionHandlers: Record<CvAction["type"], (state: CvData, action: CvActio
   },
   TOGGLE_SHOW_PHOTO: (state) => ({ ...state, showPhoto: !state.showPhoto }),
   TOGGLE_SHOW_PROJECTS: (state) => ({ ...state, showProjects: !state.showProjects }),
+  TOGGLE_SECTION: (state, action) => {
+    const a = action as Extract<CvAction, { type: "TOGGLE_SECTION" }>;
+    return { ...state, hiddenSections: toggle(state.hiddenSections, a.section) };
+  },
+  TOGGLE_EXPERIENCE_HIDDEN: (state, action) => {
+    const a = action as Extract<CvAction, { type: "TOGGLE_EXPERIENCE_HIDDEN" }>;
+    const experience = [...state.experience];
+    experience[a.index] = { ...experience[a.index], hidden: !experience[a.index].hidden };
+    return { ...state, experience };
+  },
+  TOGGLE_EDUCATION_HIDDEN: (state, action) => {
+    const a = action as Extract<CvAction, { type: "TOGGLE_EDUCATION_HIDDEN" }>;
+    const education = [...state.education];
+    education[a.index] = { ...education[a.index], hidden: !education[a.index].hidden };
+    return { ...state, education };
+  },
+  TOGGLE_PROJECT_HIDDEN: (state, action) => {
+    const a = action as Extract<CvAction, { type: "TOGGLE_PROJECT_HIDDEN" }>;
+    const projects = [...state.projects];
+    projects[a.index] = { ...projects[a.index], hidden: !projects[a.index].hidden };
+    return { ...state, projects };
+  },
+  TOGGLE_SKILL_CATEGORY_HIDDEN: (state, action) => {
+    const a = action as Extract<CvAction, { type: "TOGGLE_SKILL_CATEGORY_HIDDEN" }>;
+    return { ...state, hiddenSkillCategories: toggle(state.hiddenSkillCategories, a.category) };
+  },
   SET_HEADER_BG_COLOR: (state, action) => {
     const a = action as Extract<CvAction, { type: "SET_HEADER_BG_COLOR" }>;
     return { ...state, headerBgColor: a.value };
@@ -285,7 +324,11 @@ const cvActionHandlers: Record<CvAction["type"], (state: CvData, action: CvActio
   },
 };
 
-function cvReducer(state: CvData, action: CvAction): CvData {
+function toggle<T>(list: T[] | undefined, value: T): T[] {
+  return list?.includes(value) ? list.filter((v) => v !== value) : [...(list ?? []), value];
+}
+
+export function cvReducer(state: CvData, action: CvAction): CvData {
   const handler = cvActionHandlers[action.type];
   return handler ? handler(state, action) : state;
 }
@@ -296,6 +339,7 @@ interface CvEditorProps {
   cvId: string;
   initialData: CvData;
   initialTemplateId: TemplateId;
+  generationReport?: GenerationReport | null;
 }
 
 // Coerce null to empty string for controlled inputs
@@ -303,13 +347,14 @@ function str(value: string | null | undefined): string {
   return value ?? "";
 }
 
-export function CvEditor({ cvId, initialData, initialTemplateId }: CvEditorProps) {
+export function CvEditor({ cvId, initialData, initialTemplateId, generationReport }: CvEditorProps) {
   const [cvData, dispatch] = useReducer(cvReducer, initialData);
-  const [templateId, setTemplateId] = [initialTemplateId, (v: TemplateId) => {
-    templateIdRef.current = v;
+  const isSectionHidden = (section: CvSection) => cvData.hiddenSections?.includes(section) ?? false;
+  const [templateId, setTemplateIdState] = useState(initialTemplateId);
+  const setTemplateId = (v: TemplateId) => {
+    setTemplateIdState(v);
     updateCvTemplate(cvId, v);
-  }] as const;
-  const templateIdRef = useRef(initialTemplateId);
+  };
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Debounced auto-save
@@ -336,6 +381,14 @@ export function CvEditor({ cvId, initialData, initialTemplateId }: CvEditorProps
     scheduleAutoSave(cvData);
   }, [cvData, scheduleAutoSave]);
 
+  // The download page reads the CV from the database: save pending edits first
+  const router = useRouter();
+  const openDownloadPage = async () => {
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    await saveCvData(cvId, cvData);
+    router.push(`/cv/${cvId}/pdf`);
+  };
+
   return (
     <div className="flex flex-col h-full">
       {/* Toolbar */}
@@ -348,20 +401,31 @@ export function CvEditor({ cvId, initialData, initialTemplateId }: CvEditorProps
               { value: "minimalist", label: "Minimaliste" },
               { value: "elegant", label: "Elegant" },
             ]}
-            value={templateIdRef.current}
+            value={templateId}
             onChange={(e) => setTemplateId(e.target.value as TemplateId)}
           />
           <span className="text-xs text-gray-400">Auto-save activé</span>
         </div>
-        <Link href={`/cv/${cvId}/pdf`}>
-          <Button>Télécharger PDF</Button>
-        </Link>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={openDownloadPage}>
+            CV + lettre
+          </Button>
+          {/* Same renderer as the preview: downloads exactly what is shown */}
+          <PdfDownloadButton
+            data={cvData}
+            templateId={templateId}
+            fileName={`CV_${cvData.header.name || "sans_nom"}`.replace(/[^a-zA-Z0-9]/g, "_")}
+            size="default"
+          />
+        </div>
       </div>
 
       {/* Split view */}
       <div className="flex flex-1 overflow-hidden">
         {/* Left: Editors */}
         <div className="w-1/2 overflow-auto p-4 space-y-4 border-r border-gray-200">
+          {generationReport && <GenerationReportPanel report={generationReport} />}
+
           {/* Header */}
           <Card>
             <CardHeader><CardTitle>En-tête</CardTitle></CardHeader>
@@ -422,6 +486,15 @@ export function CvEditor({ cvId, initialData, initialTemplateId }: CvEditorProps
                 />
                 <span className="text-sm text-gray-700">Afficher ma photo de profil</span>
               </label>
+              {cvData.showPhoto && !cvData.header.image && (
+                <p className="text-xs text-gray-500">
+                  Aucune photo de profil pour l&apos;instant.{" "}
+                  <Link href="/profile" className="text-blue-600 hover:underline">
+                    Ajoutez-en une
+                  </Link>{" "}
+                  pour l&apos;afficher sur le CV.
+                </p>
+              )}
             </CardContent>
           </Card>
 
@@ -435,13 +508,21 @@ export function CvEditor({ cvId, initialData, initialTemplateId }: CvEditorProps
             onTextColorChange={(v) => update({ type: "SET_HEADER_TEXT_COLOR", value: v })}
             onBgImageChange={(v) => update({ type: "SET_HEADER_BG_IMAGE", value: v })}
             onBgImagePositionChange={(v) => update({ type: "SET_HEADER_BG_IMAGE_POSITION", value: v })}
-            templateId={templateIdRef.current}
+            templateId={templateId}
           />
 
           {/* Summary */}
           <Card>
-            <CardHeader><CardTitle>Résumé professionnel</CardTitle></CardHeader>
-            <CardContent>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle>Résumé professionnel</CardTitle>
+                <ShowOnCvToggle
+                  checked={!isSectionHidden("summary")}
+                  onChange={() => update({ type: "TOGGLE_SECTION", section: "summary" })}
+                />
+              </div>
+            </CardHeader>
+            <CardContent className={isSectionHidden("summary") ? "opacity-50" : undefined}>
               <Textarea
                 value={cvData.summary}
                 rows={4}
@@ -452,14 +533,28 @@ export function CvEditor({ cvId, initialData, initialTemplateId }: CvEditorProps
 
           {/* Experience */}
           <Card>
-            <CardHeader><CardTitle>Expériences</CardTitle></CardHeader>
-            <CardContent className="space-y-6">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle>Expériences</CardTitle>
+                <ShowOnCvToggle
+                  checked={!isSectionHidden("experience")}
+                  onChange={() => update({ type: "TOGGLE_SECTION", section: "experience" })}
+                />
+              </div>
+            </CardHeader>
+            <CardContent className={`space-y-6 ${isSectionHidden("experience") ? "opacity-50" : ""}`}>
               {cvData.experience.map((exp, expIdx) => (
-                <div key={exp.id} className="space-y-2 pb-4 border-b border-gray-100 last:border-0">
+                <div key={exp.id} className={`space-y-2 pb-4 border-b border-gray-100 last:border-0 ${exp.hidden ? "opacity-50" : ""}`}>
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium text-gray-700">
                       {exp.position || exp.company ? `${exp.position}${exp.company ? ` — ${exp.company}` : ""}` : `Expérience ${expIdx + 1}`}
                     </span>
+                    <div className="flex items-center gap-2">
+                    <ShowOnCvToggle
+                      label="Afficher"
+                      checked={!exp.hidden}
+                      onChange={() => update({ type: "TOGGLE_EXPERIENCE_HIDDEN", index: expIdx })}
+                    />
                     <Button
                       variant="ghost"
                       size="sm"
@@ -472,6 +567,7 @@ export function CvEditor({ cvId, initialData, initialTemplateId }: CvEditorProps
                     >
                       Supprimer
                     </Button>
+                    </div>
                   </div>
                   <div className="grid gap-2 sm:grid-cols-2">
                     <Input
@@ -544,14 +640,28 @@ export function CvEditor({ cvId, initialData, initialTemplateId }: CvEditorProps
 
           {/* Education */}
           <Card>
-            <CardHeader><CardTitle>Formation</CardTitle></CardHeader>
-            <CardContent className="space-y-6">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle>Formation</CardTitle>
+                <ShowOnCvToggle
+                  checked={!isSectionHidden("education")}
+                  onChange={() => update({ type: "TOGGLE_SECTION", section: "education" })}
+                />
+              </div>
+            </CardHeader>
+            <CardContent className={`space-y-6 ${isSectionHidden("education") ? "opacity-50" : ""}`}>
               {cvData.education.map((edu, eduIdx) => (
-                <div key={edu.id} className="space-y-2 pb-4 border-b border-gray-100 last:border-0">
+                <div key={edu.id} className={`space-y-2 pb-4 border-b border-gray-100 last:border-0 ${edu.hidden ? "opacity-50" : ""}`}>
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium text-gray-700">
                       {edu.degree || edu.institution ? `${edu.degree}${edu.institution ? ` — ${edu.institution}` : ""}` : `Formation ${eduIdx + 1}`}
                     </span>
+                    <div className="flex items-center gap-2">
+                    <ShowOnCvToggle
+                      label="Afficher"
+                      checked={!edu.hidden}
+                      onChange={() => update({ type: "TOGGLE_EDUCATION_HIDDEN", index: eduIdx })}
+                    />
                     <Button
                       variant="ghost"
                       size="sm"
@@ -564,6 +674,7 @@ export function CvEditor({ cvId, initialData, initialTemplateId }: CvEditorProps
                     >
                       Supprimer
                     </Button>
+                    </div>
                   </div>
                   <div className="grid gap-2 sm:grid-cols-2">
                     <Input
@@ -630,53 +741,70 @@ export function CvEditor({ cvId, initialData, initialTemplateId }: CvEditorProps
                 </label>
               </div>
             </CardHeader>
-            {cvData.showProjects && (
-              <CardContent className="space-y-6">
-                <ProjectsEditorContent
-                  projects={cvData.projects}
-                  experiences={cvData.experience}
-                  onAdd={() => update({ type: "ADD_PROJECT" })}
-                  onRemove={(i) => {
-                    if (confirm("Supprimer ce projet ?")) {
-                      update({ type: "REMOVE_PROJECT", index: i });
-                    }
-                  }}
-                  onSetField={(i, field, value) =>
-                    update({ type: "SET_PROJECT_FIELD", index: i, field, value })
+            <CardContent className={`space-y-6 ${cvData.showProjects ? "" : "opacity-50"}`}>
+              <ProjectsEditorContent
+                projects={cvData.projects}
+                experiences={cvData.experience}
+                onAdd={() => update({ type: "ADD_PROJECT" })}
+                onToggleHidden={(i) => update({ type: "TOGGLE_PROJECT_HIDDEN", index: i })}
+                onRemove={(i) => {
+                  if (confirm("Supprimer ce projet ?")) {
+                    update({ type: "REMOVE_PROJECT", index: i });
                   }
-                  onAddTech={(i, value) =>
-                    update({ type: "ADD_PROJECT_TECHNOLOGY", index: i, value })
-                  }
-                  onRemoveTech={(pi, ti) =>
-                    update({ type: "REMOVE_PROJECT_TECHNOLOGY", projectIndex: pi, techIndex: ti })
-                  }
-                  onAddHighlight={(i, value) =>
-                    update({ type: "ADD_PROJECT_HIGHLIGHT", index: i, value })
-                  }
-                  onRemoveHighlight={(pi, hi) =>
-                    update({ type: "REMOVE_PROJECT_HIGHLIGHT", projectIndex: pi, highlightIndex: hi })
-                  }
-                  onAddLink={(i, label, url) =>
-                    update({ type: "ADD_PROJECT_LINK", index: i, label, url })
-                  }
-                  onRemoveLink={(pi, li) =>
-                    update({ type: "REMOVE_PROJECT_LINK", projectIndex: pi, linkIndex: li })
-                  }
-                  onSetLinkField={(pi, li, field, value) =>
-                    update({ type: "SET_PROJECT_LINK_FIELD", projectIndex: pi, linkIndex: li, field, value })
-                  }
-                />
-              </CardContent>
-            )}
+                }}
+                onSetField={(i, field, value) =>
+                  update({ type: "SET_PROJECT_FIELD", index: i, field, value })
+                }
+                onAddTech={(i, value) =>
+                  update({ type: "ADD_PROJECT_TECHNOLOGY", index: i, value })
+                }
+                onRemoveTech={(pi, ti) =>
+                  update({ type: "REMOVE_PROJECT_TECHNOLOGY", projectIndex: pi, techIndex: ti })
+                }
+                onAddHighlight={(i, value) =>
+                  update({ type: "ADD_PROJECT_HIGHLIGHT", index: i, value })
+                }
+                onRemoveHighlight={(pi, hi) =>
+                  update({ type: "REMOVE_PROJECT_HIGHLIGHT", projectIndex: pi, highlightIndex: hi })
+                }
+                onAddLink={(i, label, url) =>
+                  update({ type: "ADD_PROJECT_LINK", index: i, label, url })
+                }
+                onRemoveLink={(pi, li) =>
+                  update({ type: "REMOVE_PROJECT_LINK", projectIndex: pi, linkIndex: li })
+                }
+                onSetLinkField={(pi, li, field, value) =>
+                  update({ type: "SET_PROJECT_LINK_FIELD", projectIndex: pi, linkIndex: li, field, value })
+                }
+              />
+            </CardContent>
           </Card>
 
           {/* Skills */}
           <Card>
-            <CardHeader><CardTitle>Compétences</CardTitle></CardHeader>
-            <CardContent className="space-y-3">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle>Compétences</CardTitle>
+                <ShowOnCvToggle
+                  checked={!isSectionHidden("skills")}
+                  onChange={() => update({ type: "TOGGLE_SECTION", section: "skills" })}
+                />
+              </div>
+            </CardHeader>
+            <CardContent className={`space-y-3 ${isSectionHidden("skills") ? "opacity-50" : ""}`}>
               {Object.entries(cvData.skills).map(([category, skillList]) => (
-                <div key={category}>
-                  <label className="text-sm font-medium text-gray-700">{category}</label>
+                <div
+                  key={category}
+                  className={cvData.hiddenSkillCategories?.includes(category) ? "opacity-50" : undefined}
+                >
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-medium text-gray-700">{category}</label>
+                    <ShowOnCvToggle
+                      label="Afficher"
+                      checked={!cvData.hiddenSkillCategories?.includes(category)}
+                      onChange={() => update({ type: "TOGGLE_SKILL_CATEGORY_HIDDEN", category })}
+                    />
+                  </div>
                   <div className="flex flex-wrap gap-1 mt-1">
                     {skillList.map((skill, sIdx) => (
                       <span
@@ -704,13 +832,15 @@ export function CvEditor({ cvId, initialData, initialTemplateId }: CvEditorProps
             onAdd={(v) => update({ type: "ADD_INTEREST", value: v })}
             onRemove={(i) => update({ type: "REMOVE_INTEREST", index: i })}
             onSet={(i, v) => update({ type: "SET_INTEREST", index: i, value: v })}
+            hidden={isSectionHidden("interests")}
+            onToggleHidden={() => update({ type: "TOGGLE_SECTION", section: "interests" })}
           />
         </div>
 
         {/* Right: Preview */}
         <div className="w-1/2 overflow-auto bg-gray-100 p-4">
           <div className="mx-auto" style={{ maxWidth: "595px" }}>
-            <CvPreview data={cvData} templateId={templateIdRef.current} />
+            <CvPdfPreview data={cvData} templateId={templateId} />
           </div>
         </div>
       </div>
@@ -739,6 +869,7 @@ function ProjectsEditorContent({
   experiences,
   onAdd,
   onRemove,
+  onToggleHidden,
   onSetField,
   onAddTech,
   onRemoveTech,
@@ -752,6 +883,7 @@ function ProjectsEditorContent({
   experiences: CvExperience[];
   onAdd: () => void;
   onRemove: (index: number) => void;
+  onToggleHidden: (index: number) => void;
   onSetField: (index: number, field: keyof CvProject, value: string) => void;
   onAddTech: (index: number, value: string) => void;
   onRemoveTech: (projectIndex: number, techIndex: number) => void;
@@ -764,23 +896,39 @@ function ProjectsEditorContent({
   const [newTechs, setNewTechs] = useState<Record<number, string>>({});
   const [newHighlights, setNewHighlights] = useState<Record<number, string>>({});
   const [newLinks, setNewLinks] = useState<Record<number, { label: string; url: string }>>({});
+  const sectionShownCount = projects.filter((p) => !p.hidden && isInProjectsSection(p)).length;
+  const sectionFull = sectionShownCount >= MAX_SECTION_PROJECTS;
 
   return (
     <>
+      <p className={`text-xs ${sectionShownCount > MAX_SECTION_PROJECTS ? "text-amber-700" : "text-gray-500"}`}>
+        {sectionShownCount > MAX_SECTION_PROJECTS
+          ? `Seuls les ${MAX_SECTION_PROJECTS} premiers projets du bloc Projets apparaissent sur le CV : masquez-en un ou placez-le sous une expérience.`
+          : `Le bloc Projets affiche ${MAX_SECTION_PROJECTS} projets au maximum, côte à côte en bas de page.`}
+      </p>
       {projects.map((project, pIdx) => (
-        <div key={project.id} className="space-y-3 pb-4 border-b border-gray-100 last:border-0">
+        <div key={project.id} className={`space-y-3 pb-4 border-b border-gray-100 last:border-0 ${project.hidden ? "opacity-50" : ""}`}>
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium text-gray-700">
               {project.name || `Projet ${pIdx + 1}`}
             </span>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => onRemove(pIdx)}
-              className="text-red-500 hover:text-red-700 hover:bg-red-50"
-            >
-              Supprimer
-            </Button>
+            <div className="flex items-center gap-2">
+              <ShowOnCvToggle
+                label="Afficher"
+                checked={!project.hidden}
+                onChange={() => onToggleHidden(pIdx)}
+                disabled={project.hidden && sectionFull && isInProjectsSection(project)}
+                disabledReason={`${MAX_SECTION_PROJECTS} projets déjà affichés dans le bloc Projets`}
+              />
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => onRemove(pIdx)}
+                className="text-red-500 hover:text-red-700 hover:bg-red-50"
+              >
+                Supprimer
+              </Button>
+            </div>
           </div>
 
           {/* Identité */}
@@ -1232,18 +1380,27 @@ function InterestsEditor({
   onAdd,
   onRemove,
   onSet,
+  hidden,
+  onToggleHidden,
 }: {
   interests: string[];
   onAdd: (value: string) => void;
   onRemove: (index: number) => void;
   onSet: (index: number, value: string) => void;
+  hidden: boolean;
+  onToggleHidden: () => void;
 }) {
   const [newInterest, setNewInterest] = useState("");
 
   return (
     <Card>
-      <CardHeader><CardTitle>Centres d&apos;intérêts</CardTitle></CardHeader>
-      <CardContent className="space-y-2">
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <CardTitle>Centres d&apos;intérêts</CardTitle>
+          <ShowOnCvToggle checked={!hidden} onChange={onToggleHidden} />
+        </div>
+      </CardHeader>
+      <CardContent className={`space-y-2 ${hidden ? "opacity-50" : ""}`}>
         {interests.map((interest, i) => (
           <div key={i} className="flex gap-1">
             <Input
@@ -1289,5 +1446,38 @@ function InterestsEditor({
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+// --- Visibility toggle ---
+
+/** Checkbox deciding whether a section or an item appears in the PDF. */
+function ShowOnCvToggle({
+  checked,
+  onChange,
+  label = "Afficher sur le CV",
+  disabled = false,
+  disabledReason,
+}: {
+  checked: boolean;
+  onChange: () => void;
+  label?: string;
+  disabled?: boolean;
+  disabledReason?: string;
+}) {
+  return (
+    <label
+      className={`flex items-center gap-2 text-sm text-gray-700 shrink-0 ${disabled ? "cursor-not-allowed opacity-60" : "cursor-pointer"}`}
+      title={disabled ? disabledReason : undefined}
+    >
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={onChange}
+        disabled={disabled}
+        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+      />
+      {label}
+    </label>
   );
 }

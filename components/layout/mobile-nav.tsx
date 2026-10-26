@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
+import type { Route } from "next";
 
 const navItems = [
   { href: "/dashboard", label: "Tableau de bord" },
@@ -11,7 +12,7 @@ const navItems = [
   { href: "/skills", label: "Compétences" },
   { href: "/cv", label: "Mes CVs" },
   { href: "/cv/new", label: "Nouveau CV" },
-];
+] satisfies { href: Route; label: string }[];
 
 export function MobileNav() {
   const [open, setOpen] = useState(false);
@@ -24,9 +25,11 @@ export function MobileNav() {
   }, []);
 
   // Close on navigation
-  useEffect(() => {
+  const [prevPathname, setPrevPathname] = useState(pathname);
+  if (pathname !== prevPathname) {
+    setPrevPathname(pathname);
     setOpen(false);
-  }, [pathname]);
+  }
 
   if (!open) return null;
 

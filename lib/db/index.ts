@@ -1,9 +1,12 @@
+import "server-only";
 import Database from "better-sqlite3";
 import { drizzle } from "drizzle-orm/better-sqlite3";
 import * as schema from "./schema";
 import path from "path";
 
-const dbPath = path.join(process.cwd(), "data", "cv-maker.db");
+const dbPath =
+  process.env.DATABASE_PATH ??
+  path.join(process.cwd(), "data", "cv-maker.db");
 const sqlite = new Database(dbPath);
 
 // Enable WAL mode for better concurrent read performance

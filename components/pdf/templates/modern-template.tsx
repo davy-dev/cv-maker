@@ -210,21 +210,19 @@ const styles = StyleSheet.create({
   bulletText: { flex: 1, fontSize: 8, color: colors.gray700 },
 
   // Projects full-width section
+  // Pinned to the bottom of the page, in the space left above the footer
   projectsFullWidth: {
+    marginTop: "auto",
     paddingHorizontal: 16,
     paddingTop: 6,
     paddingBottom: 8,
     borderTopWidth: 1,
     borderTopColor: colors.gray200,
   },
-  projectsGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 6,
-  },
+  projectsGrid: { flexDirection: "row", gap: 6 },
   // Projects — bg-gray-50 border border-gray-200 rounded p-2
   projectItem: {
-    width: "31.5%",
+    flex: 1,
     backgroundColor: colors.gray50,
     borderWidth: 1,
     borderColor: colors.gray200,
@@ -405,9 +403,9 @@ export function ModernPdfTemplate({ data }: { data: CvData }) {
               {/* Summary */}
               {data.summary && (
                 <View style={styles.sectionSpacing}>
-                  <View style={styles.sectionTitleRow}>
+                  <View style={styles.sectionTitleRow} minPresenceAhead={60}>
                     <SummaryIcon size={10} color={colors.headerAccent} />
-                    <Text style={styles.sectionTitleText}>A propos</Text>
+                    <Text style={styles.sectionTitleText}>À propos</Text>
                   </View>
                   <Text style={styles.summaryText}>{data.summary}</Text>
                 </View>
@@ -416,14 +414,14 @@ export function ModernPdfTemplate({ data }: { data: CvData }) {
               {/* Experiences */}
               {data.experience.length > 0 && (
                 <View style={styles.sectionSpacing}>
-                  <View style={styles.sectionTitleRow}>
+                  <View style={styles.sectionTitleRow} minPresenceAhead={60}>
                     <ExperienceIcon size={10} color={colors.headerAccent} />
-                    <Text style={styles.sectionTitleText}>Experiences professionnelles</Text>
+                    <Text style={styles.sectionTitleText}>Expériences professionnelles</Text>
                   </View>
                   {data.experience.map((exp) => {
                     const linkedProjects = getProjectsForExperience(data, exp.id);
                     return (
-                      <View key={exp.id} style={styles.expItem}>
+                      <View key={exp.id} wrap={false} style={styles.expItem}>
                         <Text style={styles.expTitle}>{exp.position}</Text>
                         <View style={styles.expMeta}>
                           <Text style={styles.expCompany}>{exp.company}</Text>
@@ -442,9 +440,9 @@ export function ModernPdfTemplate({ data }: { data: CvData }) {
                         ))}
                         {linkedProjects.length > 0 && (
                           <View style={styles.linkedProjectsContainer}>
-                            <Text style={styles.linkedProjectsTitle}>Projets associes</Text>
+                            <Text style={styles.linkedProjectsTitle}>Projets associés</Text>
                             {linkedProjects.map((project) => (
-                              <View key={project.id} style={styles.linkedProjectItem}>
+                              <View key={project.id} wrap={false} style={styles.linkedProjectItem}>
                                 <View style={styles.linkedProjectTitleRow}>
                                   <Text style={styles.linkedProjectName}>{project.name}</Text>
                                   {project.type && (
@@ -489,9 +487,9 @@ export function ModernPdfTemplate({ data }: { data: CvData }) {
               {/* Skills */}
               {Object.keys(data.skills).length > 0 && (
                 <View style={styles.sectionSpacing}>
-                  <View style={styles.sectionTitleRowSide}>
+                  <View style={styles.sectionTitleRowSide} minPresenceAhead={60}>
                     <SkillsIcon size={10} color={colors.headerAccent} />
-                    <Text style={styles.sectionTitleTextSide}>Competences</Text>
+                    <Text style={styles.sectionTitleTextSide}>Compétences</Text>
                   </View>
                   {Object.entries(data.skills).map(([cat, skillList]) => (
                     <View key={cat} style={styles.skillCategory}>
@@ -509,12 +507,12 @@ export function ModernPdfTemplate({ data }: { data: CvData }) {
               {/* Education */}
               {data.education.length > 0 && (
                 <View style={styles.sectionSpacing}>
-                  <View style={styles.sectionTitleRowSide}>
+                  <View style={styles.sectionTitleRowSide} minPresenceAhead={60}>
                     <EducationIcon size={10} color={colors.headerAccent} />
                     <Text style={styles.sectionTitleTextSide}>Formations</Text>
                   </View>
                   {data.education.map((edu) => (
-                    <View key={edu.id} style={styles.eduItem}>
+                    <View key={edu.id} wrap={false} style={styles.eduItem}>
                       <Text style={styles.eduDegree}>{edu.degree}</Text>
                       <Text style={styles.eduInstitution}>{edu.institution}</Text>
                       <Text style={styles.eduYear}>
@@ -531,9 +529,9 @@ export function ModernPdfTemplate({ data }: { data: CvData }) {
               {data.interests && data.interests.length > 0 && (
                 <View style={styles.sectionSpacing}>
                   <View style={styles.interestsBox}>
-                    <View style={styles.interestsTitleRow}>
+                    <View style={styles.interestsTitleRow} minPresenceAhead={60}>
                       <InterestsIcon size={8} color={colors.amber700} />
-                      <Text style={styles.interestsTitleText}>Centres d&apos;interets</Text>
+                      <Text style={styles.interestsTitleText}>Centres d&apos;intérêt</Text>
                     </View>
                     {data.interests.map((interest, i) => (
                       <Text key={i} style={styles.interestItem}>{interest}</Text>
@@ -547,7 +545,7 @@ export function ModernPdfTemplate({ data }: { data: CvData }) {
           {/* Projects — full-width */}
           {data.showProjects !== false && getProjectsForSection(data).length > 0 && (
             <View style={styles.projectsFullWidth}>
-              <View style={styles.sectionTitleRow}>
+              <View style={styles.sectionTitleRow} minPresenceAhead={60}>
                 <ProjectsIcon size={10} color={colors.headerAccent} />
                 <Text style={styles.sectionTitleText}>Projets</Text>
               </View>
@@ -555,7 +553,7 @@ export function ModernPdfTemplate({ data }: { data: CvData }) {
                 {getProjectsForSection(data).map((project) => {
                   const companyName = getLinkedCompanyName(data, project);
                   return (
-                    <View key={project.id} style={styles.projectItem}>
+                    <View key={project.id} wrap={false} style={styles.projectItem}>
                       {project.type && (
                         <View style={{ flexDirection: "row", justifyContent: "flex-end", marginBottom: 2 }}>
                           <Text style={styles.projectTypeBadge}>

@@ -1,4 +1,4 @@
-import { auth } from "@/lib/auth/auth";
+import { getCurrentUserId } from "@/lib/auth/session";
 import { scrapeCompany } from "@/lib/scraper";
 import { z } from "zod";
 import { NextResponse } from "next/server";
@@ -8,8 +8,8 @@ const scrapeSchema = z.object({
 });
 
 export async function POST(request: Request) {
-  const session = await auth();
-  if (!session?.user?.id) {
+  const userId = await getCurrentUserId();
+  if (!userId) {
     return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
   }
 

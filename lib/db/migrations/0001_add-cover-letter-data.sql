@@ -1,0 +1,1 @@
+ALTER TABLE `generated_cvs` ADD `cover_letter_data` text;

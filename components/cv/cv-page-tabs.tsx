@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { CvEditor } from "@/components/cv/cv-editor";
 import { CoverLetterEditor } from "@/components/cover-letter/cover-letter-editor";
-import type { CvData, CoverLetterData, TemplateId } from "@/types/cv";
+import type { CvData, CoverLetterData, GenerationReport, TemplateId } from "@/types/cv";
 
 type ActiveTab = "cv" | "cover-letter";
 
@@ -12,6 +12,7 @@ interface CvPageTabsProps {
   initialCvData: CvData;
   initialTemplateId: TemplateId;
   initialCoverLetterData: CoverLetterData | null;
+  generationReport: GenerationReport | null;
 }
 
 const tabLabels: Record<ActiveTab, string> = {
@@ -24,6 +25,7 @@ export function CvPageTabs({
   initialCvData,
   initialTemplateId,
   initialCoverLetterData,
+  generationReport,
 }: CvPageTabsProps) {
   const [activeTab, setActiveTab] = useState<ActiveTab>("cv");
 
@@ -53,6 +55,7 @@ export function CvPageTabs({
             cvId={cvId}
             initialData={initialCvData}
             initialTemplateId={initialTemplateId}
+            generationReport={generationReport}
           />
         )}
         {activeTab === "cover-letter" && (

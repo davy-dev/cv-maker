@@ -1,0 +1,1 @@
+ALTER TABLE `generated_cvs` ADD `generation_report` text;
