@@ -40,7 +40,7 @@ describe("cvReducer — sections libres et mise en page", () => {
     data = cvReducer(data, { type: "TOGGLE_CUSTOM_SECTION_HIDDEN", id });
     expect(data.customSections![0]).toMatchObject({ content: "Anglais", hidden: true });
 
-    data = cvReducer(data, { type: "MOVE_SECTION", section: `custom:${id}`, column: "main", index: 0 });
+    data = cvReducer(data, { type: "MOVE_SECTION", section: `custom:${id}`, column: "main", before: "summary" });
     expect(data.layout!.main[0]).toBe(`custom:${id}`);
 
     data = cvReducer(data, { type: "REMOVE_CUSTOM_SECTION", id });
@@ -49,7 +49,7 @@ describe("cvReducer — sections libres et mise en page", () => {
   });
 
   it("enregistre la mise en page complète au premier déplacement", () => {
-    const data = cvReducer(buildCvData(), { type: "MOVE_SECTION", section: "skills", column: "main", index: 0 });
+    const data = cvReducer(buildCvData(), { type: "MOVE_SECTION", section: "skills", column: "main", before: "summary" });
     expect(data.layout).toEqual({
       main: ["skills", "summary", "experience", "projects"],
       aside: ["education", "interests"],

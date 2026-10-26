@@ -1,4 +1,4 @@
-import { customSectionId, moveSection, resolveLayout } from "@/lib/cv/layout";
+import { customSectionId, insertBefore, moveSection, resolveLayout } from "@/lib/cv/layout";
 import type { CvColumn, CvCustomSection, CvData, CvExperience, CvEducation, CvProject, CvSection, ImagePosition, SectionId } from "@/types/cv";
 
 export type CvAction =
@@ -51,7 +51,12 @@ export type CvAction =
   | { type: "REMOVE_CUSTOM_SECTION"; id: string }
   | { type: "SET_CUSTOM_SECTION_FIELD"; id: string; field: "title" | "content"; value: string }
   | { type: "TOGGLE_CUSTOM_SECTION_HIDDEN"; id: string }
-  | { type: "MOVE_SECTION"; section: SectionId; column: CvColumn; index: number };
+  /** `before`: the section to land in front of; null for the end of the column */
+  | { type: "MOVE_SECTION"; section: SectionId; column: CvColumn; before: SectionId | null }
+  /** Reorders an entry within its section; `id` is the category name for skills */
+  | { type: "MOVE_ITEM"; section: "experience" | "education" | "projects" | "skills"; id: string; before: string | null }
+  /** Reorders the points of an experience or a project; `before` is an index, the list's length for the end */
+  | { type: "MOVE_BULLET"; list: "experience" | "project"; id: string; from: number; before: number };
 
 const cvActionHandlers: Record<CvAction["type"], (state: CvData, action: CvAction) => CvData> = {
   SET_HEADER_FIELD: (state, action) => {
@@ -383,7 +388,48 @@ const cvActionHandlers: Record<CvAction["type"], (state: CvData, action: CvActio
   },
   MOVE_SECTION: (state, action) => {
     const a = action as Extract<CvAction, { type: "MOVE_SECTION" }>;
-    return { ...state, layout: moveSection(resolveLayout(state), a.section, a.column, a.index) };
+    return { ...state, layout: moveSection(resolveLayout(state), a.section, a.column, a.before) };
+  },
+  MOVE_ITEM: (state, action) => {
+    const a = action as Extract<CvAction, { type: "MOVE_ITEM" }>;
+    if (a.id === a.before) return state;
+    if (a.section === "skills") {
+      if (!(a.id in state.skills)) return state;
+      const order = insertBefore(Object.keys(state.skills).filter((c) => c !== a.id), a.id, a.before);
+      return { ...state, skills: Object.fromEntries(order.map((c) => [c, state.skills[c]])) };
+    }
+    const reorder = <T extends { id: string }>(list: T[]): T[] => {
+      const item = list.find((e) => e.id === a.id);
+      if (!item) return list;
+      const rest = list.filter((e) => e.id !== a.id);
+      const before = rest.find((e) => e.id === a.before) ?? null;
+      return insertBefore(rest, item, before);
+    };
+    if (a.section === "experience") return { ...state, experience: reorder(state.experience) };
+    if (a.section === "education") return { ...state, education: reorder(state.education) };
+    return { ...state, projects: reorder(state.projects) };
+  },
+  MOVE_BULLET: (state, action) => {
+    const a = action as Extract<CvAction, { type: "MOVE_BULLET" }>;
+    // Index once the moved point is taken out of the list
+    const to = a.before > a.from ? a.before - 1 : a.before;
+    if (to === a.from) return state;
+    const move = (list: string[]) => {
+      const result = [...list];
+      const [item] = result.splice(a.from, 1);
+      result.splice(to, 0, item);
+      return result;
+    };
+    if (a.list === "experience") {
+      return {
+        ...state,
+        experience: state.experience.map((e) => (e.id === a.id ? { ...e, bullets: move(e.bullets) } : e)),
+      };
+    }
+    return {
+      ...state,
+      projects: state.projects.map((p) => (p.id === a.id ? { ...p, highlights: move(p.highlights) } : p)),
+    };
   },
 };
 

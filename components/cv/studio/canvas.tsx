@@ -2,8 +2,10 @@
 
 import { useEffect, useRef, useState } from "react";
 import { parseFieldKey, type CvField } from "@/lib/cv/fields";
+import type { CvAction } from "@/lib/cv/reducer";
 import { parseSelectionKey, type Selection } from "@/lib/cv/selection";
 import { zoomAround, type Size, type View } from "@/lib/studio/view";
+import { findDragSource, findDropTarget, type DragSource, type DropTarget } from "./drag";
 
 export type Tool = "select" | "hand";
 
@@ -13,6 +15,8 @@ const PAGE_HEIGHT = 1123;
 const PRINT_MARGIN = 45;
 
 const SELECTION_COLOR = "#0d99ff";
+/** Screen pixels the pointer must travel before a press becomes a drag */
+const DRAG_THRESHOLD = 4;
 
 /**
  * Where pages roughly break when printed: the first page keeps a bottom margin,
@@ -42,6 +46,8 @@ interface CanvasProps {
   onSelect: (selection: Selection) => void;
   /** Double-click on a piece of text: edit it in place, caret where clicked */
   onStartEditing: (field: CvField, point: { x: number; y: number }) => void;
+  /** A section, entry or point dropped somewhere else on the page */
+  onMove: (action: CvAction) => void;
   title: string;
   children: React.ReactNode;
 }
@@ -58,6 +64,7 @@ export function Canvas({
   selectedKey,
   onSelect,
   onStartEditing,
+  onMove,
   title,
   children,
 }: CanvasProps) {
@@ -68,6 +75,12 @@ export function Canvas({
   const [contentHeight, setContentHeight] = useState(0);
   const [hoveredKey, setHoveredKey] = useState<string | null>(null);
   const [pan, setPan] = useState<{ pointerX: number; pointerY: number; view: View } | null>(null);
+  // A press on something movable; it becomes a drag once the pointer travels
+  const press = useRef<{ source: DragSource; x: number; y: number; dragging: boolean; target: DropTarget | null } | null>(
+    null
+  );
+  const [dragging, setDragging] = useState(false);
+  const [dropLine, setDropLine] = useState<DropTarget["line"] | null>(null);
 
   // The wheel listener is attached once: it reads the latest props from here
   const latest = useRef({ view, onViewChange });
@@ -129,6 +142,18 @@ export function Canvas({
     if ((e.target as HTMLElement).closest("[data-editing]")) return;
     const key = selectableAt(e.target);
     onSelect((key && parseSelectionKey(key)) || { kind: "document" });
+    const source = pageRef.current && findDragSource(e.target as Element, pageRef.current);
+    press.current = source ? { source, x: e.clientX, y: e.clientY, dragging: false, target: null } : null;
+  }
+
+  function endDrag(drop: boolean) {
+    const current = press.current;
+    press.current = null;
+    if (!current?.dragging) return;
+    current.source.element.style.opacity = "";
+    setDragging(false);
+    setDropLine(null);
+    if (drop && current.target) onMove(current.target.action);
   }
 
   function handleDoubleClick(e: React.MouseEvent) {
@@ -148,11 +173,27 @@ export function Canvas({
       });
       return;
     }
+    const current = press.current;
+    if (current && pageRef.current) {
+      if (!current.dragging && Math.hypot(e.clientX - current.x, e.clientY - current.y) > DRAG_THRESHOLD) {
+        current.dragging = true;
+        e.currentTarget.setPointerCapture(e.pointerId);
+        // Dimmed in place while it travels; React never sets this element's style
+        current.source.element.style.opacity = "0.35";
+        setDragging(true);
+        setHoveredKey(null);
+      }
+      if (current.dragging) {
+        current.target = findDropTarget(current.source, pageRef.current, e.clientX, e.clientY, view.zoom);
+        setDropLine(current.target?.line ?? null);
+        return;
+      }
+    }
     setHoveredKey(panMode ? null : selectableAt(e.target));
   }
 
   const breaks = pageBreaks(contentHeight);
-  const cursor = pan ? "grabbing" : panMode ? "grab" : "default";
+  const cursor = pan || dragging ? "grabbing" : panMode ? "grab" : "default";
 
   return (
     <div
@@ -162,8 +203,14 @@ export function Canvas({
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onDoubleClick={handleDoubleClick}
-      onPointerUp={() => setPan(null)}
-      onPointerCancel={() => setPan(null)}
+      onPointerUp={() => {
+        setPan(null);
+        endDrag(true);
+      }}
+      onPointerCancel={() => {
+        setPan(null);
+        endDrag(false);
+      }}
       onPointerLeave={() => setHoveredKey(null)}
       // Links on the CV (email, LinkedIn…) must not navigate while editing
       onClickCapture={(e) => {
@@ -200,6 +247,21 @@ export function Canvas({
           style={{ width: PAGE_WIDTH, minHeight: PAGE_HEIGHT }}
         >
           <div ref={contentRef}>{children}</div>
+          {dropLine && (
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute"
+              style={{
+                top: dropLine.top,
+                left: dropLine.left,
+                width: dropLine.width,
+                height: `calc(2px / var(--zoom))`,
+                marginTop: `calc(-1px / var(--zoom))`,
+                background: SELECTION_COLOR,
+              }}
+              data-testid="drop-line"
+            />
+          )}
           {breaks.map((top, i) => (
             <div
               key={top}

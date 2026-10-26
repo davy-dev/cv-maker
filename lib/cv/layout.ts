@@ -42,13 +42,24 @@ export function resolveLayout(data: CvData): CvLayout {
   return layout;
 }
 
-/** Moves a section to `index` in `column` (clamped), wherever it was before. */
-export function moveSection(layout: CvLayout, section: SectionId, column: CvColumn, index: number): CvLayout {
+/**
+ * Moves a section into `column`, just before `before` (at the end when null),
+ * wherever it was. Expressed relative to a neighbour rather than as an index,
+ * so sections absent from the page (empty, hidden) do not shift the target.
+ */
+export function moveSection(layout: CvLayout, section: SectionId, column: CvColumn, before: SectionId | null): CvLayout {
+  if (section === before) return layout;
   const without: CvLayout = {
     main: layout.main.filter((id) => id !== section),
     aside: layout.aside.filter((id) => id !== section),
   };
-  const target = [...without[column]];
-  target.splice(Math.max(0, Math.min(index, target.length)), 0, section);
-  return { ...without, [column]: target };
+  return { ...without, [column]: insertBefore(without[column], section, before) };
+}
+
+/** Inserts `item` before `before` in a list that does not hold it; at the end when `before` is null or absent. */
+export function insertBefore<T>(list: T[], item: T, before: T | null): T[] {
+  const index = before === null ? -1 : list.indexOf(before);
+  const result = [...list];
+  result.splice(index < 0 ? result.length : index, 0, item);
+  return result;
 }

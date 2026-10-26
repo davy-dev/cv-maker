@@ -5,6 +5,7 @@ import { EditingContext, type EditingApi } from "@/components/cv/templates-html/
 import { ExecutiveTemplate } from "@/components/cv/templates-html/executive-template";
 import { useCvAutosave } from "@/hooks/use-cv-autosave";
 import { fieldKey, insertAfter, isLiveField, readField, removeEntry, writeField, type CvField } from "@/lib/cv/fields";
+import { nudgeAction, type Direction } from "@/lib/cv/move";
 import { cvReducer } from "@/lib/cv/reducer";
 import { resolveSelection, selectionKey, type Selection } from "@/lib/cv/selection";
 import { applyVisibility } from "@/lib/cv/visibility";
@@ -22,13 +23,22 @@ interface StudioProps {
   generationReport: GenerationReport | null;
 }
 
-/** Keys typed into a field, or activating a focused control, are not shortcuts. */
-function isTypingOrControl(target: EventTarget | null): boolean {
-  return (
-    target instanceof HTMLElement &&
-    (target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT", "BUTTON", "A"].includes(target.tagName))
-  );
+/** Keys typed into a field are never shortcuts. */
+function isTyping(target: EventTarget | null): boolean {
+  return target instanceof HTMLElement && (target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName));
 }
+
+/** Space activates a focused button or link: it does not pan then. */
+function isControl(target: EventTarget | null): boolean {
+  return target instanceof HTMLElement && ["BUTTON", "A"].includes(target.tagName);
+}
+
+const ARROW_DIRECTIONS: Record<string, Direction> = {
+  ArrowUp: "up",
+  ArrowDown: "down",
+  ArrowLeft: "left",
+  ArrowRight: "right",
+};
 
 /** The Figma-like CV editor: layers, the CV on a canvas, and an inspector. */
 export function Studio({ cvId, title, initialData, generationReport }: StudioProps) {
@@ -66,9 +76,15 @@ export function Studio({ cvId, title, initialData, generationReport }: StudioPro
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      if (isTypingOrControl(e.target)) return;
+      if (isTyping(e.target)) return;
       const mod = e.metaKey || e.ctrlKey;
-      if (e.code === "Space") {
+      if (e.altKey && ARROW_DIRECTIONS[e.key]) {
+        // Alt + arrows move the selection: the keyboard way to drag
+        e.preventDefault();
+        const action = nudgeAction(data, selection, ARROW_DIRECTIONS[e.key]);
+        if (action) dispatch(action);
+      } else if (e.code === "Space") {
+        if (isControl(e.target)) return;
         e.preventDefault();
         setSpaceHeld(true);
       } else if (mod && (e.key === "=" || e.key === "+")) {
@@ -214,6 +230,7 @@ export function Studio({ cvId, title, initialData, generationReport }: StudioPro
           selectedKey={selection.kind === "document" ? null : selectionKey(selection)}
           onSelect={setSelection}
           onStartEditing={startEditing}
+          onMove={dispatch}
           title={title}
         >
           {cvPage}

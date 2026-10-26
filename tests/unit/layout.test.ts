@@ -50,16 +50,20 @@ describe("resolveLayout", () => {
 });
 
 describe("moveSection", () => {
-  it("déplace une section vers l'autre colonne", () => {
-    expect(moveSection(DEFAULT_LAYOUT, "skills", "main", 1)).toEqual({
+  it("déplace une section vers l'autre colonne, devant une autre", () => {
+    expect(moveSection(DEFAULT_LAYOUT, "skills", "main", "experience")).toEqual({
       main: ["summary", "skills", "experience", "projects"],
       aside: ["education", "interests"],
     });
   });
 
-  it("réordonne dans la même colonne et borne la position", () => {
-    expect(moveSection(DEFAULT_LAYOUT, "summary", "main", 99).main).toEqual(["experience", "projects", "summary"]);
-    expect(moveSection(DEFAULT_LAYOUT, "projects", "main", -3).main).toEqual(["projects", "summary", "experience"]);
+  it("réordonne dans la même colonne, jusqu'en fin de colonne", () => {
+    expect(moveSection(DEFAULT_LAYOUT, "summary", "main", null).main).toEqual(["experience", "projects", "summary"]);
+    expect(moveSection(DEFAULT_LAYOUT, "projects", "main", "summary").main).toEqual(["projects", "summary", "experience"]);
+  });
+
+  it("ne change rien quand une section est déposée devant elle-même", () => {
+    expect(moveSection(DEFAULT_LAYOUT, "summary", "main", "summary")).toBe(DEFAULT_LAYOUT);
   });
 });
 

@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 import { parseCustomSectionId, resolveLayout } from "@/lib/cv/layout";
 import type { CvAction, CvDispatch } from "@/lib/cv/reducer";
 import { sectionTitle, selectionKey, type ItemSection, type Selection } from "@/lib/cv/selection";
-import type { CvData, SectionId } from "@/types/cv";
+import type { CvColumn, CvData, SectionId } from "@/types/cv";
 import { ChevronIcon, EyeIcon, EyeOffIcon } from "./icons";
 
 interface LayerItem {
@@ -95,6 +95,46 @@ export function LayersPanel({
   const [collapsed, setCollapsed] = useState<Set<SectionId>>(new Set());
   const selectedKey = selectionKey(selection);
 
+  // What is being dragged in the panel, and where it would land
+  const [dragged, setDragged] = useState<
+    { kind: "section"; section: SectionId } | { kind: "item"; section: ItemSection; id: string } | null
+  >(null);
+  const [dropHint, setDropHint] = useState<{ key: string; position: "before" | "after" } | null>(null);
+
+  const endDrag = () => {
+    setDragged(null);
+    setDropHint(null);
+  };
+
+  /** Drag handlers of a row: `action` is the move a drop before or after it means, null if it does not accept the dragged row. */
+  const dropTarget = (key: string, action: (position: "before" | "after") => CvAction | null): DropProps => ({
+    hint: dropHint?.key === key ? dropHint.position : null,
+    onDragOver: (e) => {
+      if (!dragged || !action("before")) return;
+      e.preventDefault();
+      const rect = e.currentTarget.getBoundingClientRect();
+      const position = e.clientY < rect.top + rect.height / 2 ? "before" : "after";
+      if (dropHint?.key !== key || dropHint.position !== position) setDropHint({ key, position });
+    },
+    onDrop: (e) => {
+      e.preventDefault();
+      const position = dropHint?.key === key ? dropHint.position : "before";
+      const move = action(position);
+      if (move) dispatch(move);
+      endDrag();
+    },
+  });
+
+  const sectionDrop = (column: CvColumn, list: SectionId[], index: number) => (position: "before" | "after") =>
+    dragged?.kind === "section"
+      ? ({
+          type: "MOVE_SECTION",
+          section: dragged.section,
+          column,
+          before: position === "before" ? list[index] : (list[index + 1] ?? null),
+        } as CvAction)
+      : null;
+
   const toggleCollapsed = (section: SectionId) =>
     setCollapsed((previous) => {
       const next = new Set(previous);
@@ -103,7 +143,7 @@ export function LayersPanel({
       return next;
     });
 
-  const renderSection = (section: SectionId) => {
+  const renderSection = (column: CvColumn, section: SectionId, index: number, list: SectionId[]) => {
     const { hidden, toggle } = sectionVisibility(data, section);
     const children = sectionItems(data, section);
     const open = !collapsed.has(section);
@@ -112,6 +152,11 @@ export function LayersPanel({
       <li key={section}>
         <LayerRow
           label={title}
+          drag={{
+            onDragStart: () => setDragged({ kind: "section", section }),
+            onDragEnd: endDrag,
+            ...dropTarget(`section:${section}`, sectionDrop(column, list, index)),
+          }}
           selected={selectedKey === selectionKey({ kind: "section", section })}
           hidden={hidden}
           onSelect={() => onSelect({ kind: "section", section })}
@@ -132,11 +177,26 @@ export function LayersPanel({
         />
         {children && open && (
           <ul>
-            {children.items.map((item) => (
+            {children.items.map((item, itemIndex) => (
               <li key={item.id}>
                 <LayerRow
                   label={item.label}
                   indent
+                  drag={{
+                    onDragStart: () => setDragged({ kind: "item", section: children.section, id: item.id }),
+                    onDragEnd: endDrag,
+                    ...dropTarget(`item:${children.section}:${item.id}`, (position) =>
+                      dragged?.kind === "item" && dragged.section === children.section
+                        ? {
+                            type: "MOVE_ITEM",
+                            section: children.section,
+                            id: dragged.id,
+                            before:
+                              position === "before" ? item.id : (children.items[itemIndex + 1]?.id ?? null),
+                          }
+                        : null
+                    ),
+                  }}
                   selected={selectedKey === selectionKey({ kind: "item", section: children.section, id: item.id })}
                   hidden={item.hidden || hidden}
                   onSelect={() => onSelect({ kind: "item", section: children.section, id: item.id })}
@@ -163,8 +223,20 @@ export function LayersPanel({
             />
           </li>
         </ul>
-        <ColumnGroup title="Colonne principale">{layout.main.map(renderSection)}</ColumnGroup>
-        <ColumnGroup title="Colonne latérale">{layout.aside.map(renderSection)}</ColumnGroup>
+        {(["main", "aside"] as const).map((column) => (
+          <ColumnGroup
+            key={column}
+            title={column === "main" ? "Colonne principale" : "Colonne latérale"}
+            // Dropped on the column's name: at the top of it (the only way into an empty column)
+            drop={dropTarget(`column:${column}`, () =>
+              dragged?.kind === "section"
+                ? { type: "MOVE_SECTION", section: dragged.section, column, before: layout[column][0] ?? null }
+                : null
+            )}
+          >
+            {layout[column].map((section, index, list) => renderSection(column, section, index, list))}
+          </ColumnGroup>
+        ))}
       </div>
       <div className="border-t border-gray-200 p-3">
         <button
@@ -179,10 +251,27 @@ export function LayersPanel({
   );
 }
 
-function ColumnGroup({ title, children }: { title: string; children: React.ReactNode }) {
+interface DropProps {
+  hint: "before" | "after" | null;
+  onDragOver: (e: React.DragEvent<HTMLElement>) => void;
+  onDrop: (e: React.DragEvent<HTMLElement>) => void;
+}
+
+const DROP_HINT_CLASSES = {
+  before: "shadow-[inset_0_2px_0_#0d99ff]",
+  after: "shadow-[inset_0_-2px_0_#0d99ff]",
+};
+
+function ColumnGroup({ title, drop, children }: { title: string; drop: DropProps; children: React.ReactNode }) {
   return (
     <section className="mt-3">
-      <h3 className="px-4 pb-1 text-[11px] font-medium text-gray-400">{title}</h3>
+      <h3
+        onDragOver={drop.onDragOver}
+        onDrop={drop.onDrop}
+        className={cn("px-4 pb-1 text-[11px] font-medium text-gray-400", drop.hint && DROP_HINT_CLASSES.after)}
+      >
+        {title}
+      </h3>
       <ul>{children}</ul>
     </section>
   );
@@ -196,6 +285,7 @@ function LayerRow({
   onSelect,
   onToggleHidden,
   expander,
+  drag,
 }: {
   label: string;
   selected: boolean;
@@ -204,13 +294,26 @@ function LayerRow({
   onSelect: () => void;
   onToggleHidden?: () => void;
   expander?: React.ReactNode;
+  /** Rows are reordered by dragging them; Alt + arrows do the same from the keyboard */
+  drag?: DropProps & { onDragStart: () => void; onDragEnd: () => void };
 }) {
   return (
     <div
+      draggable={!!drag}
+      onDragStart={(e) => {
+        if (!drag) return;
+        e.dataTransfer.effectAllowed = "move";
+        e.dataTransfer.setData("text/plain", label);
+        drag.onDragStart();
+      }}
+      onDragEnd={drag?.onDragEnd}
+      onDragOver={drag?.onDragOver}
+      onDrop={drag?.onDrop}
       className={cn(
         "group flex h-8 items-center gap-1 pr-2 text-sm",
         indent ? "pl-9" : "pl-3",
-        selected ? "bg-blue-50 text-blue-900" : "text-gray-700 hover:bg-gray-50"
+        selected ? "bg-blue-50 text-blue-900" : "text-gray-700 hover:bg-gray-50",
+        drag?.hint && DROP_HINT_CLASSES[drag.hint]
       )}
     >
       {!indent && <span className="flex w-5 justify-center">{expander}</span>}
