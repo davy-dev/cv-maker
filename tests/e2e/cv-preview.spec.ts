@@ -3,7 +3,7 @@ import Database from "better-sqlite3";
 import { test, expect } from "./fixtures";
 
 // The app never calls Claude here: the CV is written straight into the E2E database.
-function insertCv(email: string, projectCount: number, generationReport: object | null = null): string {
+function insertCv(email: string, projectCount: number, generationReport: object | null = null, experienceCount = 1): string {
   const db = new Database("data/e2e.db");
   try {
     const { id: userId } = db.prepare("SELECT id FROM users WHERE email = ?").get(email) as { id: string };
@@ -18,7 +18,10 @@ function insertCv(email: string, projectCount: number, generationReport: object 
       headerTextColor: null,
       headerBgImage: null,
       headerBgImagePosition: null,
-      experience: [{ id: "exp1", company: "Acme", position: "Développeuse", location: "Lyon", startDate: "2020-01", endDate: "Présent", bullets: ["A livré une API"] }],
+      experience: Array.from({ length: experienceCount }, (_, i) => ({
+        id: `exp${i}`, company: `Entreprise ${i}`, position: "Développeuse", location: "Lyon", startDate: "2020-01", endDate: "Présent",
+        bullets: experienceCount === 1 ? ["A livré une API"] : Array.from({ length: 4 }, (_, j) => `Réalisation ${j} décrite assez longuement pour occuper une ligne entière du CV.`),
+      })),
       education: [],
       skills: { Langages: ["TypeScript"] },
       projects: Array.from({ length: projectCount }, (_, i) => ({
@@ -48,7 +51,8 @@ async function downloadedPageCount(page: import("@playwright/test").Page) {
 }
 
 test("l'aperçu montre le vrai PDF et correspond au fichier téléchargé", async ({ page, user }) => {
-  const cvId = insertCv(user.email, 20);
+  // The projects section is capped at two cards, so the length comes from the experiences
+  const cvId = insertCv(user.email, 1, null, 12);
   await page.goto(`/cv/${cvId}`);
 
   // Long CV: the preview shows every page and warns about it
@@ -57,9 +61,9 @@ test("l'aperçu montre le vrai PDF et correspond au fichier téléchargé", asyn
   expect(previewPages).toBeGreaterThan(1);
   expect(await downloadedPageCount(page)).toBe(previewPages);
 
-  // Hiding the projects brings it back to one page, in the preview and in the file
-  const projectsCard = page.locator("div").filter({ has: page.getByText("Projets", { exact: true }) }).last();
-  await projectsCard.getByLabel("Afficher sur le CV").first().uncheck();
+  // Hiding the experiences brings it back to one page, in the preview and in the file
+  const experienceCard = page.locator("div").filter({ has: page.getByText("Expériences", { exact: true }) }).last();
+  await experienceCard.getByLabel("Afficher sur le CV").first().uncheck();
   await expect(page.getByText("1 page", { exact: true })).toBeVisible({ timeout: 20_000 });
   await expect(page.getByRole("img", { name: /^Page \d+ sur \d+$/ })).toHaveCount(1);
   expect(await downloadedPageCount(page)).toBe(1);
