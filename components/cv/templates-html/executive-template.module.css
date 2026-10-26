@@ -11,12 +11,6 @@
   background: #ffffff;
 }
 
-@media screen {
-  .page {
-    min-height: 1123px;
-  }
-}
-
 .page a {
   color: inherit;
   text-decoration: none;

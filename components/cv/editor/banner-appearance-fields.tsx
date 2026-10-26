@@ -4,13 +4,14 @@ import { useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { useDragReposition } from "@/hooks/use-drag-reposition";
 import type { CvDispatch } from "@/lib/cv/reducer";
-import type { CvData, ImagePosition, TemplateId } from "@/types/cv";
+import type { CvData, ImagePosition } from "@/types/cv";
 
 const TEMPLATE_DEFAULTS: Record<string, { bg: string; text: string }> = {
   modern: { bg: "#0f172a", text: "#ffffff" },
   classic: { bg: "#ffffff", text: "#1a1a1a" },
   minimalist: { bg: "#ffffff", text: "#222222" },
   elegant: { bg: "#0f172a", text: "#ffffff" },
+  executive: { bg: "#000829", text: "#ffffff" },
 };
 
 /** Colors and background image of the CV header. */
@@ -20,7 +21,8 @@ export function BannerAppearanceFields({
   dispatch,
 }: {
   data: CvData;
-  templateId: TemplateId;
+  /** Also the HTML templates' ids, not yet TemplateIds */
+  templateId: string;
   dispatch: CvDispatch;
 }) {
   const { headerBgColor: bgColor, headerTextColor: textColor, headerBgImage: bgImage } = data;

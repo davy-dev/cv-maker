@@ -1,6 +1,7 @@
 "use client";
 
 import { useReducer, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { updateCvTemplate } from "@/lib/actions/cv";
 import { Button } from "@/components/ui/button";
@@ -83,6 +84,9 @@ export function CvEditor({ cvId, initialData, initialTemplateId, generationRepor
           </span>
         </div>
         <div className="flex items-center gap-2">
+          <Link href={`/cv/${cvId}/studio`} className="text-sm font-medium text-blue-600 hover:underline">
+            Studio (bêta)
+          </Link>
           <Button variant="outline" onClick={openDownloadPage}>
             CV + lettre
           </Button>

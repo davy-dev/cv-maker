@@ -41,7 +41,8 @@ export type CvAction =
   | { type: "SET_HEADER_TEXT_COLOR"; value: string | null }
   | { type: "SET_HEADER_BG_IMAGE"; value: string | null }
   | { type: "SET_HEADER_BG_IMAGE_POSITION"; value: ImagePosition | null }
-  | { type: "ADD_CUSTOM_SECTION"; title: string }
+  /** `id` lets the caller select the new section right away */
+  | { type: "ADD_CUSTOM_SECTION"; title: string; id?: string }
   | { type: "REMOVE_CUSTOM_SECTION"; id: string }
   | { type: "SET_CUSTOM_SECTION_FIELD"; id: string; field: "title" | "content"; value: string }
   | { type: "TOGGLE_CUSTOM_SECTION_HIDDEN"; id: string }
@@ -312,7 +313,7 @@ const cvActionHandlers: Record<CvAction["type"], (state: CvData, action: CvActio
   },
   ADD_CUSTOM_SECTION: (state, action) => {
     const a = action as Extract<CvAction, { type: "ADD_CUSTOM_SECTION" }>;
-    const section: CvCustomSection = { id: crypto.randomUUID(), title: a.title, content: "" };
+    const section: CvCustomSection = { id: a.id ?? crypto.randomUUID(), title: a.title, content: "" };
     return { ...state, customSections: [...(state.customSections ?? []), section] };
   },
   REMOVE_CUSTOM_SECTION: (state, action) => {

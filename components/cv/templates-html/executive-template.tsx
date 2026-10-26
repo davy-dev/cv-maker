@@ -1,4 +1,5 @@
 import { parseCustomSectionId, resolveLayout } from "@/lib/cv/layout";
+import { selectionKey } from "@/lib/cv/selection";
 import type { CvData, CvProject, SectionId } from "@/types/cv";
 import { RichText } from "./rich-text";
 import styles from "./executive-template.module.css";
@@ -20,6 +21,7 @@ export function ExecutiveTemplate({ data }: { data: CvData }) {
   return (
     <div className={styles.page}>
       <header
+        data-select="header"
         className={styles.header}
         style={{
           background: data.headerBgColor || DEFAULT_HEADER_BG,
@@ -101,13 +103,14 @@ export function ExecutiveTemplate({ data }: { data: CvData }) {
 
 /** One section, in whichever column the layout puts it; nothing when it is empty. */
 function Section({ id, data }: { id: SectionId; data: CvData }) {
+  const key = selectionKey({ kind: "section", section: id });
   const customId = parseCustomSectionId(id);
   if (customId) {
     const section = data.customSections?.find((s) => s.id === customId);
     const lines = section?.content.split("\n").filter((line) => line.trim()) ?? [];
     if (!section || lines.length === 0) return null;
     return (
-      <section>
+      <section data-select={key}>
         <h2 className={styles.sectionTitle}>{section.title}</h2>
         {lines.map((line, i) => (
           <div key={i} className={styles.line}>
@@ -122,7 +125,7 @@ function Section({ id, data }: { id: SectionId; data: CvData }) {
     case "summary":
       return (
         data.summary && (
-          <section>
+          <section data-select={key}>
             <h2 className={styles.sectionTitle}>Profil</h2>
             <p className={styles.paragraph}>
               <RichText text={data.summary} />
@@ -134,14 +137,14 @@ function Section({ id, data }: { id: SectionId; data: CvData }) {
     case "experience":
       return (
         data.experience.length > 0 && (
-          <section>
+          <section data-select={key}>
             <h2 className={styles.sectionTitle}>Expérience professionnelle</h2>
             {data.experience.map((exp) => {
               const linkedProjects = data.projects.filter(
                 (p) => p.displayMode === "under-experience" && p.linkedExperienceId === exp.id
               );
               return (
-                <div key={exp.id} className={styles.item}>
+                <div key={exp.id} data-select={`item:experience:${exp.id}`} className={styles.item}>
                   <div className={styles.itemHeader}>
                     <div className={styles.itemTitle}>
                       {[exp.position, exp.company].filter(Boolean).join(" — ")}
@@ -152,7 +155,7 @@ function Section({ id, data }: { id: SectionId; data: CvData }) {
                   </div>
                   <Bullets items={exp.bullets} />
                   {linkedProjects.map((project) => (
-                    <div key={project.id} className={styles.subProject}>
+                    <div key={project.id} data-select={`item:projects:${project.id}`} className={styles.subProject}>
                       <span className={styles.subProjectTitle}>{project.name}</span>
                       {project.description && <> — {project.description}</>}
                       <Bullets items={project.highlights} />
@@ -169,7 +172,7 @@ function Section({ id, data }: { id: SectionId; data: CvData }) {
       const projects = data.projects.filter((p) => !p.displayMode || p.displayMode === "projects-section");
       return (
         projects.length > 0 && (
-          <section>
+          <section data-select={key}>
             <h2 className={styles.sectionTitle}>Projets</h2>
             {projects.map((project) => (
               <ProjectItem key={project.id} project={project} />
@@ -183,11 +186,11 @@ function Section({ id, data }: { id: SectionId; data: CvData }) {
       const categories = Object.entries(data.skills).filter(([, skills]) => skills.length > 0);
       return (
         categories.length > 0 && (
-          <section>
+          <section data-select={key}>
             <h2 className={styles.sectionTitle}>Compétences techniques</h2>
             <div className={styles.stack}>
               {categories.map(([category, skills]) => (
-                <div key={category} className={styles.item}>
+                <div key={category} data-select={`item:skills:${category}`} className={styles.item}>
                   <div className={styles.strong}>{category}</div>
                   <div>{skills.join(", ")}</div>
                 </div>
@@ -201,11 +204,11 @@ function Section({ id, data }: { id: SectionId; data: CvData }) {
     case "education":
       return (
         data.education.length > 0 && (
-          <section>
+          <section data-select={key}>
             <h2 className={styles.sectionTitle}>Formation</h2>
             <div className={styles.stackLoose}>
               {data.education.map((edu) => (
-                <div key={edu.id} className={styles.item}>
+                <div key={edu.id} data-select={`item:education:${edu.id}`} className={styles.item}>
                   <div className={styles.strong}>{[edu.degree, edu.field].filter(Boolean).join(" — ")}</div>
                   <div>
                     {[edu.institution, formatPeriod(edu.startDate, edu.endDate)].filter(Boolean).join(" · ")}
@@ -221,7 +224,7 @@ function Section({ id, data }: { id: SectionId; data: CvData }) {
     case "interests":
       return (
         data.interests.length > 0 && (
-          <section>
+          <section data-select={key}>
             <h2 className={styles.sectionTitle}>Centres d&apos;intérêt</h2>
             {data.interests.map((interest, i) => (
               <div key={i} className={styles.line}>
@@ -237,7 +240,7 @@ function Section({ id, data }: { id: SectionId; data: CvData }) {
 function ProjectItem({ project }: { project: CvProject }) {
   const note = [project.role, project.technologies.join(", ")].filter(Boolean).join(" · ");
   return (
-    <div className={styles.item}>
+    <div data-select={`item:projects:${project.id}`} className={styles.item}>
       <div className={styles.itemHeader}>
         <div className={styles.itemTitle}>{project.name}</div>
         {project.url && (
