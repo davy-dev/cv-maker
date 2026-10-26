@@ -1,0 +1,222 @@
+/* A4 at 96 dpi: 794 × 1123 px. Fonts come from the page as --font-cv-sans / --font-cv-serif. */
+.page {
+  width: 794px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  font-family: var(--font-cv-sans), "Source Sans 3", sans-serif;
+  color: #1b2430;
+  font-size: 12px;
+  line-height: 1.42;
+  background: #ffffff;
+}
+
+@media screen {
+  .page {
+    min-height: 1123px;
+  }
+}
+
+.page a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.header {
+  position: relative;
+  overflow: hidden;
+  padding: 28px 40px 24px;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.headerBgImage {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.headerContent {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.photo {
+  position: relative;
+  width: 104px;
+  height: 104px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid #ffffff;
+  flex-shrink: 0;
+}
+
+.photoPlaceholder {
+  composes: photo;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.12);
+  font-family: var(--font-cv-serif), "Source Serif 4", serif;
+  font-size: 40px;
+  font-weight: 700;
+}
+
+.name {
+  margin: 0;
+  font-family: var(--font-cv-serif), "Source Serif 4", serif;
+  font-size: 34px;
+  line-height: 1.05;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+}
+
+.title {
+  font-size: 17px;
+  font-weight: 600;
+  opacity: 0.9;
+}
+
+.subtitle {
+  font-size: 12.5px;
+  opacity: 0.8;
+}
+
+.contacts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  margin-top: 6px;
+  font-size: 12px;
+}
+
+.contact {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.contact svg {
+  opacity: 0.85;
+  flex-shrink: 0;
+}
+
+.body {
+  flex: 1;
+  display: flex;
+  gap: 26px;
+  padding: 18px 40px 24px;
+}
+
+.main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+}
+
+.aside {
+  width: 224px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.sectionTitle {
+  margin: 0 0 6px;
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  color: #1f3a5f;
+  border-bottom: 1.5px solid #c9d6e8;
+  padding-bottom: 3px;
+  break-after: avoid;
+}
+
+.paragraph {
+  margin: 0;
+  text-wrap: pretty;
+}
+
+.item {
+  break-inside: avoid;
+}
+
+.item + .item {
+  margin-top: 9px;
+}
+
+.itemHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.itemTitle {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.itemMeta {
+  font-size: 11.5px;
+  color: #4a5868;
+  white-space: nowrap;
+}
+
+.itemNote {
+  font-size: 11.5px;
+  color: #4a5868;
+  font-style: italic;
+}
+
+.bullets {
+  margin: 4px 0 0;
+  padding-left: 15px;
+  list-style: disc;
+}
+
+.bullets li {
+  margin: 0 0 3px;
+  padding-left: 2px;
+}
+
+.bullets li::marker {
+  color: #2f6fb0;
+}
+
+.subProject {
+  margin-top: 4px;
+}
+
+.subProjectTitle {
+  font-weight: 700;
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.stackLoose {
+  composes: stack;
+  gap: 8px;
+}
+
+.strong {
+  font-weight: 700;
+}
+
+.muted {
+  color: #4a5868;
+}
