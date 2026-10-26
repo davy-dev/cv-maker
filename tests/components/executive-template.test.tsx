@@ -137,4 +137,13 @@ describe("ExecutiveTemplate", () => {
     expect(style.background).toBe("rgb(18, 52, 86)");
     expect(style.getPropertyValue("--cv-header-title")).toBe("inherit");
   });
+
+  it("arrondit la photo selon le réglage, ronde par défaut", () => {
+    const header = { ...buildCvData().header, image: "/uploads/abc-1.png" };
+    const { rerender } = render(<ExecutiveTemplate data={buildCvData({ showPhoto: true, header })} />);
+    expect(screen.getByRole("img", { name: "Jean Dupont" }).style.borderRadius).toBe("");
+
+    rerender(<ExecutiveTemplate data={buildCvData({ showPhoto: true, header, photoRadius: 12 })} />);
+    expect(screen.getByRole("img", { name: "Jean Dupont" }).style.borderRadius).toBe("12%");
+  });
 });

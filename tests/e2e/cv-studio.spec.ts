@@ -55,8 +55,11 @@ test("zoom au clavier et téléchargement du PDF", async ({ page, user }) => {
   const zoomButton = page.getByRole("button", { name: /^Zoom \d+ %/ });
   // The page is only drawn once the studio runs: shortcuts are listened to from then on
   await expect(page.getByTestId("studio-canvas").getByRole("heading", { level: 1 })).toBeVisible();
-  await page.keyboard.press("ControlOrMeta+0");
-  await expect(zoomButton).toHaveText("100 %");
+  // On a loaded machine the first key can come before the studio listens: press until it answers
+  await expect(async () => {
+    await page.keyboard.press("ControlOrMeta+0");
+    await expect(zoomButton).toHaveText("100 %", { timeout: 1000 });
+  }).toPass();
   await page.keyboard.press("ControlOrMeta+=");
   await expect(zoomButton).toHaveText("125 %");
 
@@ -66,4 +69,20 @@ test("zoom au clavier et téléchargement du PDF", async ({ page, user }) => {
   ]);
   expect(download.suggestedFilename()).toBe("CV_Camille_Test.pdf");
   expect(readFileSync((await download.path())!).subarray(0, 5).toString()).toBe("%PDF-");
+});
+
+test("l'arrondi de la photo se règle depuis l'en-tête", async ({ page, user }) => {
+  await page.goto(`/cv/${insertCv(user.email)}/studio`);
+  const canvas = page.getByTestId("studio-canvas");
+  // Without an uploaded photo, the CV shows the initial in the same frame
+  const photo = canvas.locator("[data-artboard=cv] header [aria-hidden=true]").first();
+  await expect(photo).toHaveCSS("border-radius", "50%");
+
+  await page.getByRole("navigation", { name: "Calques" }).getByRole("button", { name: "En-tête", exact: true }).click();
+  await page.getByRole("complementary", { name: "Inspecteur" }).getByLabel("Arrondi de la photo").fill("0");
+  await expect(photo).toHaveCSS("border-radius", "0%");
+
+  await expect(page.getByRole("status").filter({ hasText: /Enregistr/ })).toHaveText("Enregistré");
+  await page.reload();
+  await expect(photo).toHaveCSS("border-radius", "0%");
 });

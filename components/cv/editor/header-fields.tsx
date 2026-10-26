@@ -1,5 +1,6 @@
 "use client";
 
+import { useId } from "react";
 import Link from "next/link";
 import { Input } from "@/components/ui/input";
 import type { CvDispatch } from "@/lib/cv/reducer";
@@ -8,6 +9,8 @@ import { str } from "./utils";
 
 export function HeaderFields({ data, dispatch }: { data: CvData; dispatch: CvDispatch }) {
   const { header } = data;
+  const photoRadius = data.photoRadius ?? 50;
+  const radiusId = useId();
   const setField = (field: keyof CvData["header"], value: string | null) =>
     dispatch({ type: "SET_HEADER_FIELD", field, value });
 
@@ -53,6 +56,25 @@ export function HeaderFields({ data, dispatch }: { data: CvData; dispatch: CvDis
         />
         <span className="text-sm text-gray-700">Afficher ma photo de profil</span>
       </label>
+      {data.showPhoto && (
+        <div className="space-y-1">
+          <label htmlFor={radiusId} className="flex justify-between text-sm font-medium text-gray-700">
+            Arrondi de la photo
+            <span className="font-normal text-gray-500">{radiusLabel(photoRadius)}</span>
+          </label>
+          <input
+            id={radiusId}
+            type="range"
+            min={0}
+            max={50}
+            step={1}
+            value={photoRadius}
+            aria-valuetext={radiusLabel(photoRadius)}
+            onChange={(e) => dispatch({ type: "SET_PHOTO_RADIUS", value: Number(e.target.value) })}
+            className="w-full accent-blue-600"
+          />
+        </div>
+      )}
       {data.showPhoto && !header.image && (
         <p className="text-xs text-gray-500">
           Aucune photo de profil pour l&apos;instant.{" "}
@@ -64,4 +86,10 @@ export function HeaderFields({ data, dispatch }: { data: CvData; dispatch: CvDis
       )}
     </div>
   );
+}
+
+function radiusLabel(radius: number): string {
+  if (radius === 0) return "Carrée";
+  if (radius === 50) return "Ronde";
+  return `${radius} %`;
 }

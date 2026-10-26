@@ -27,6 +27,12 @@ describe("normalizeCvData", () => {
     expect(cv.layout).toEqual(layout);
   });
 
+  it("garde l'arrondi de la photo, borné, et rien pour les anciens CV", () => {
+    expect(normalizeCvData(JSON.stringify({ photoRadius: 20 })).photoRadius).toBe(20);
+    expect(normalizeCvData(JSON.stringify({ photoRadius: 300 })).photoRadius).toBe(50);
+    expect(normalizeCvData("{}")).not.toHaveProperty("photoRadius");
+  });
+
   it("conserve les sections, catégories et projets masqués", () => {
     const cv = normalizeCvData(
       JSON.stringify({
