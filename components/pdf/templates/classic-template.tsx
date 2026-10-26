@@ -291,7 +291,7 @@ export function ClassicPdfTemplate({ data }: { data: CvData }) {
                 <View style={styles.sectionSpacing}>
                   <View style={styles.sectionTitleRow} minPresenceAhead={60}>
                     <ExperienceIcon size={9} color={colors.gray900} />
-                    <Text style={styles.sectionTitleText}>Experience professionnelle</Text>
+                    <Text style={styles.sectionTitleText}>Expérience professionnelle</Text>
                   </View>
                   {data.experience.map((exp) => {
                     const linkedProjects = getProjectsForExperience(data, exp.id);
@@ -389,7 +389,7 @@ export function ClassicPdfTemplate({ data }: { data: CvData }) {
                 <View style={styles.sectionSpacing}>
                   <View style={styles.sectionTitleRowSide} minPresenceAhead={60}>
                     <SkillsIcon size={8} color={colors.gray900} />
-                    <Text style={styles.sectionTitleTextSide}>Competences</Text>
+                    <Text style={styles.sectionTitleTextSide}>Compétences</Text>
                   </View>
                   {Object.entries(data.skills).map(([cat, skillList]) => (
                     <View key={cat} style={styles.skillCategory}>
@@ -405,7 +405,7 @@ export function ClassicPdfTemplate({ data }: { data: CvData }) {
                 <View style={styles.sectionSpacing}>
                   <View style={styles.sectionTitleRowSide} minPresenceAhead={60}>
                     <InterestsIcon size={8} color={colors.gray900} />
-                    <Text style={styles.sectionTitleTextSide}>Centres d&apos;interet</Text>
+                    <Text style={styles.sectionTitleTextSide}>Centres d&apos;intérêt</Text>
                   </View>
                   {data.interests.map((interest, i) => (
                     <Text key={i} style={styles.interestItem}>{interest}</Text>

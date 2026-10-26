@@ -285,7 +285,7 @@ export function MinimalistPdfTemplate({ data }: { data: CvData }) {
                 <View style={styles.sectionSpacing}>
                   <View style={styles.sectionTitleRow} minPresenceAhead={60}>
                     <ExperienceIcon size={8} color={colors.gray400} />
-                    <Text style={styles.sectionTitleText}>Experience</Text>
+                    <Text style={styles.sectionTitleText}>Expérience</Text>
                   </View>
                   {data.experience.map((exp) => {
                     const linkedProjects = getProjectsForExperience(data, exp.id);
@@ -363,7 +363,7 @@ export function MinimalistPdfTemplate({ data }: { data: CvData }) {
                 <View style={styles.sectionSpacing}>
                   <View style={styles.sectionTitleRowSide} minPresenceAhead={60}>
                     <SkillsIcon size={7} color={colors.gray400} />
-                    <Text style={styles.sectionTitleTextSide}>Competences</Text>
+                    <Text style={styles.sectionTitleTextSide}>Compétences</Text>
                   </View>
                   <View style={styles.skillsWrap}>
                     {Object.values(data.skills)
@@ -382,7 +382,7 @@ export function MinimalistPdfTemplate({ data }: { data: CvData }) {
                 <View style={styles.sectionSpacing}>
                   <View style={styles.sectionTitleRowSide} minPresenceAhead={60}>
                     <InterestsIcon size={7} color={colors.gray400} />
-                    <Text style={styles.sectionTitleTextSide}>Interets</Text>
+                    <Text style={styles.sectionTitleTextSide}>Intérêts</Text>
                   </View>
                   {data.interests.map((interest, i) => (
                     <Text key={i} style={styles.interestItem}>{interest}</Text>

@@ -429,7 +429,7 @@ export function ElegantPdfTemplate({ data }: { data: CvData }) {
                 <View style={styles.sectionSpacing}>
                   <View style={styles.sectionTitleRow} minPresenceAhead={60}>
                     <SummaryIcon size={10} color={colors.slate800} />
-                    <Text style={styles.sectionTitleText}>A propos</Text>
+                    <Text style={styles.sectionTitleText}>À propos</Text>
                   </View>
                   <Text style={styles.summaryText}>{data.summary}</Text>
                 </View>
@@ -440,7 +440,7 @@ export function ElegantPdfTemplate({ data }: { data: CvData }) {
                 <View style={styles.sectionSpacing}>
                   <View style={styles.sectionTitleRow} minPresenceAhead={60}>
                     <ExperienceIcon size={10} color={colors.slate800} />
-                    <Text style={styles.sectionTitleText}>Experience</Text>
+                    <Text style={styles.sectionTitleText}>Expérience</Text>
                   </View>
                   {data.experience.map((exp) => (
                     <View key={exp.id} wrap={false} style={styles.expItem}>
@@ -516,7 +516,7 @@ export function ElegantPdfTemplate({ data }: { data: CvData }) {
                 <View style={styles.sectionSpacing}>
                   <View style={styles.sectionTitleRowSide} minPresenceAhead={60}>
                     <SkillsIcon size={10} color={colors.slate800} />
-                    <Text style={styles.sectionTitleTextSide}>Competences</Text>
+                    <Text style={styles.sectionTitleTextSide}>Compétences</Text>
                   </View>
                   {Object.entries(data.skills).map(([cat, skillList]) => (
                     <View key={cat} style={styles.skillCategory}>
@@ -557,7 +557,7 @@ export function ElegantPdfTemplate({ data }: { data: CvData }) {
                 <View style={styles.sectionSpacing}>
                   <View style={styles.sectionTitleRowSide} minPresenceAhead={60}>
                     <InterestsIcon size={10} color={colors.slate800} />
-                    <Text style={styles.sectionTitleTextSide}>Centres d&apos;interet</Text>
+                    <Text style={styles.sectionTitleTextSide}>Centres d&apos;intérêt</Text>
                   </View>
                   <View style={styles.tagsRow}>
                     {data.interests.map((interest, i) => (

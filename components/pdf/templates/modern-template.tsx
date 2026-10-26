@@ -405,7 +405,7 @@ export function ModernPdfTemplate({ data }: { data: CvData }) {
                 <View style={styles.sectionSpacing}>
                   <View style={styles.sectionTitleRow} minPresenceAhead={60}>
                     <SummaryIcon size={10} color={colors.headerAccent} />
-                    <Text style={styles.sectionTitleText}>A propos</Text>
+                    <Text style={styles.sectionTitleText}>À propos</Text>
                   </View>
                   <Text style={styles.summaryText}>{data.summary}</Text>
                 </View>
@@ -416,7 +416,7 @@ export function ModernPdfTemplate({ data }: { data: CvData }) {
                 <View style={styles.sectionSpacing}>
                   <View style={styles.sectionTitleRow} minPresenceAhead={60}>
                     <ExperienceIcon size={10} color={colors.headerAccent} />
-                    <Text style={styles.sectionTitleText}>Experiences professionnelles</Text>
+                    <Text style={styles.sectionTitleText}>Expériences professionnelles</Text>
                   </View>
                   {data.experience.map((exp) => {
                     const linkedProjects = getProjectsForExperience(data, exp.id);
@@ -440,7 +440,7 @@ export function ModernPdfTemplate({ data }: { data: CvData }) {
                         ))}
                         {linkedProjects.length > 0 && (
                           <View style={styles.linkedProjectsContainer}>
-                            <Text style={styles.linkedProjectsTitle}>Projets associes</Text>
+                            <Text style={styles.linkedProjectsTitle}>Projets associés</Text>
                             {linkedProjects.map((project) => (
                               <View key={project.id} wrap={false} style={styles.linkedProjectItem}>
                                 <View style={styles.linkedProjectTitleRow}>
@@ -489,7 +489,7 @@ export function ModernPdfTemplate({ data }: { data: CvData }) {
                 <View style={styles.sectionSpacing}>
                   <View style={styles.sectionTitleRowSide} minPresenceAhead={60}>
                     <SkillsIcon size={10} color={colors.headerAccent} />
-                    <Text style={styles.sectionTitleTextSide}>Competences</Text>
+                    <Text style={styles.sectionTitleTextSide}>Compétences</Text>
                   </View>
                   {Object.entries(data.skills).map(([cat, skillList]) => (
                     <View key={cat} style={styles.skillCategory}>
@@ -531,7 +531,7 @@ export function ModernPdfTemplate({ data }: { data: CvData }) {
                   <View style={styles.interestsBox}>
                     <View style={styles.interestsTitleRow} minPresenceAhead={60}>
                       <InterestsIcon size={8} color={colors.amber700} />
-                      <Text style={styles.interestsTitleText}>Centres d&apos;interets</Text>
+                      <Text style={styles.interestsTitleText}>Centres d&apos;intérêt</Text>
                     </View>
                     {data.interests.map((interest, i) => (
                       <Text key={i} style={styles.interestItem}>{interest}</Text>
