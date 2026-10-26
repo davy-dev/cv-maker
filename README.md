@@ -10,6 +10,8 @@ user, along with the skills the offer asks for that the candidate does not have 
 Built with Next.js 16 (App Router, React 19), the Anthropic SDK with structured outputs, Drizzle + SQLite
 and `@react-pdf/renderer`.
 
+![CV editor: fact verification report, skills to acquire and live PDF preview](docs/screenshot.png)
+
 ## How it works
 
 ```mermaid
