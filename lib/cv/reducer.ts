@@ -5,21 +5,21 @@ export type CvAction =
   | { type: "SET_HEADER_FIELD"; field: keyof CvData["header"]; value: string | null }
   | { type: "SET_SUMMARY"; value: string }
   | { type: "SET_YEARS_EXPERIENCE"; value: string }
-  | { type: "ADD_EXPERIENCE" }
+  | { type: "ADD_EXPERIENCE"; id?: string }
   | { type: "REMOVE_EXPERIENCE"; index: number }
   | { type: "SET_EXPERIENCE_FIELD"; index: number; field: keyof CvExperience; value: string }
   | { type: "SET_EXPERIENCE_BULLET"; expIndex: number; bulletIndex: number; value: string }
   | { type: "ADD_EXPERIENCE_BULLET"; expIndex: number }
   | { type: "REMOVE_EXPERIENCE_BULLET"; expIndex: number; bulletIndex: number }
   | { type: "INSERT_EXPERIENCE_BULLET"; expIndex: number; bulletIndex: number }
-  | { type: "ADD_EDUCATION" }
+  | { type: "ADD_EDUCATION"; id?: string }
   | { type: "REMOVE_EDUCATION"; index: number }
   | { type: "SET_EDUCATION_FIELD"; index: number; field: keyof CvEducation; value: string }
   | { type: "SET_SKILL_CATEGORY"; oldCategory: string; newCategory: string }
   | { type: "ADD_SKILL"; category: string; skill: string }
   | { type: "REMOVE_SKILL"; category: string; skillIndex: number }
   | { type: "SET_SKILLS"; category: string; skills: string[] }
-  | { type: "ADD_PROJECT" }
+  | { type: "ADD_PROJECT"; id?: string }
   | { type: "REMOVE_PROJECT"; index: number }
   | { type: "SET_PROJECT_FIELD"; index: number; field: keyof CvProject; value: string }
   | { type: "ADD_PROJECT_TECHNOLOGY"; index: number; value: string }
@@ -56,6 +56,10 @@ export type CvAction =
   /** Reorders an entry within its section; `id` is the category name for skills */
   | { type: "MOVE_ITEM"; section: "experience" | "education" | "projects" | "skills"; id: string; before: string | null }
   /** Reorders the points of an experience or a project; `before` is an index, the list's length for the end */
+  | { type: "REMOVE_SKILL_CATEGORY"; category: string }
+  /** Copies an entry right after itself; `newId` is the copy's id (its name, for a skill category) */
+  | { type: "DUPLICATE_ITEM"; section: "experience" | "education" | "projects" | "skills"; id: string; newId: string }
+  | { type: "DUPLICATE_CUSTOM_SECTION"; id: string; newId: string }
   | { type: "MOVE_BULLET"; list: "experience" | "project"; id: string; from: number; before: number };
 
 const cvActionHandlers: Record<CvAction["type"], (state: CvData, action: CvAction) => CvData> = {
@@ -71,12 +75,12 @@ const cvActionHandlers: Record<CvAction["type"], (state: CvData, action: CvActio
     const a = action as Extract<CvAction, { type: "SET_YEARS_EXPERIENCE" }>;
     return { ...state, yearsExperience: a.value };
   },
-  ADD_EXPERIENCE: (state) => ({
+  ADD_EXPERIENCE: (state, action) => ({
     ...state,
     experience: [
       ...state.experience,
       {
-        id: crypto.randomUUID(),
+        id: (action as Extract<CvAction, { type: "ADD_EXPERIENCE" }>).id ?? crypto.randomUUID(),
         company: "",
         position: "",
         location: "",
@@ -128,12 +132,12 @@ const cvActionHandlers: Record<CvAction["type"], (state: CvData, action: CvActio
     experience[a.expIndex] = { ...experience[a.expIndex], bullets };
     return { ...state, experience };
   },
-  ADD_EDUCATION: (state) => ({
+  ADD_EDUCATION: (state, action) => ({
     ...state,
     education: [
       ...state.education,
       {
-        id: crypto.randomUUID(),
+        id: (action as Extract<CvAction, { type: "ADD_EDUCATION" }>).id ?? crypto.randomUUID(),
         institution: "",
         degree: "",
         field: "",
@@ -182,12 +186,12 @@ const cvActionHandlers: Record<CvAction["type"], (state: CvData, action: CvActio
     );
     return { ...state, skills, hiddenSkillCategories };
   },
-  ADD_PROJECT: (state) => ({
+  ADD_PROJECT: (state, action) => ({
     ...state,
     projects: [
       ...state.projects,
       {
-        id: crypto.randomUUID(),
+        id: (action as Extract<CvAction, { type: "ADD_PROJECT" }>).id ?? crypto.randomUUID(),
         name: "",
         description: "",
         technologies: [],
@@ -388,7 +392,11 @@ const cvActionHandlers: Record<CvAction["type"], (state: CvData, action: CvActio
   },
   MOVE_SECTION: (state, action) => {
     const a = action as Extract<CvAction, { type: "MOVE_SECTION" }>;
-    return { ...state, layout: moveSection(resolveLayout(state), a.section, a.column, a.before) };
+    const layout = resolveLayout(state);
+    const moved = moveSection(layout, a.section, a.column, a.before);
+    // Dropped where it already was: no new state, so no undo step and no save
+    const same = (["main", "aside"] as const).every((c) => moved[c].join() === layout[c].join());
+    return same ? state : { ...state, layout: moved };
   },
   MOVE_ITEM: (state, action) => {
     const a = action as Extract<CvAction, { type: "MOVE_ITEM" }>;
@@ -396,6 +404,7 @@ const cvActionHandlers: Record<CvAction["type"], (state: CvData, action: CvActio
     if (a.section === "skills") {
       if (!(a.id in state.skills)) return state;
       const order = insertBefore(Object.keys(state.skills).filter((c) => c !== a.id), a.id, a.before);
+      if (order.join("\n") === Object.keys(state.skills).join("\n")) return state;
       return { ...state, skills: Object.fromEntries(order.map((c) => [c, state.skills[c]])) };
     }
     const reorder = <T extends { id: string }>(list: T[]): T[] => {
@@ -403,11 +412,60 @@ const cvActionHandlers: Record<CvAction["type"], (state: CvData, action: CvActio
       if (!item) return list;
       const rest = list.filter((e) => e.id !== a.id);
       const before = rest.find((e) => e.id === a.before) ?? null;
-      return insertBefore(rest, item, before);
+      const result = insertBefore(rest, item, before);
+      return result.every((e, i) => e === list[i]) ? list : result;
     };
-    if (a.section === "experience") return { ...state, experience: reorder(state.experience) };
-    if (a.section === "education") return { ...state, education: reorder(state.education) };
-    return { ...state, projects: reorder(state.projects) };
+    const key = a.section === "projects" ? "projects" : a.section;
+    const list = state[key];
+    const reordered = reorder<(typeof list)[number]>(list);
+    return reordered === list ? state : { ...state, [key]: reordered };
+  },
+  REMOVE_SKILL_CATEGORY: (state, action) => {
+    const a = action as Extract<CvAction, { type: "REMOVE_SKILL_CATEGORY" }>;
+    const skills = { ...state.skills };
+    delete skills[a.category];
+    return {
+      ...state,
+      skills,
+      hiddenSkillCategories: state.hiddenSkillCategories?.filter((c) => c !== a.category),
+    };
+  },
+  DUPLICATE_ITEM: (state, action) => {
+    const a = action as Extract<CvAction, { type: "DUPLICATE_ITEM" }>;
+    if (a.section === "skills") {
+      if (!(a.id in state.skills) || a.newId in state.skills) return state;
+      const entries = Object.entries(state.skills);
+      const index = entries.findIndex(([category]) => category === a.id);
+      entries.splice(index + 1, 0, [a.newId, [...state.skills[a.id]]]);
+      return { ...state, skills: Object.fromEntries(entries) };
+    }
+    const copyAfter = <T extends { id: string }>(list: T[]): T[] => {
+      const index = list.findIndex((e) => e.id === a.id);
+      if (index < 0) return list;
+      const copy = structuredClone(list[index]);
+      copy.id = a.newId;
+      return [...list.slice(0, index + 1), copy, ...list.slice(index + 1)];
+    };
+    if (a.section === "experience") return { ...state, experience: copyAfter(state.experience) };
+    if (a.section === "education") return { ...state, education: copyAfter(state.education) };
+    return { ...state, projects: copyAfter(state.projects) };
+  },
+  DUPLICATE_CUSTOM_SECTION: (state, action) => {
+    const a = action as Extract<CvAction, { type: "DUPLICATE_CUSTOM_SECTION" }>;
+    const sections = state.customSections ?? [];
+    const index = sections.findIndex((s) => s.id === a.id);
+    if (index < 0) return state;
+    const copy = { ...sections[index], id: a.newId };
+    // The copy sits right under the original, in the same column
+    const layout = resolveLayout(state);
+    const original = customSectionId(a.id);
+    const column = layout.main.includes(original) ? "main" : "aside";
+    const after = layout[column][layout[column].indexOf(original) + 1] ?? null;
+    return {
+      ...state,
+      customSections: [...sections.slice(0, index + 1), copy, ...sections.slice(index + 1)],
+      layout: moveSection(layout, customSectionId(a.newId), column, after),
+    };
   },
   MOVE_BULLET: (state, action) => {
     const a = action as Extract<CvAction, { type: "MOVE_BULLET" }>;

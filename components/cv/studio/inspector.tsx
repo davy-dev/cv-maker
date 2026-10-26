@@ -13,7 +13,7 @@ import { ShowOnCvToggle } from "@/components/cv/editor/show-on-cv-toggle";
 import { SkillCategoryFields } from "@/components/cv/editor/skill-category-fields";
 import { GenerationReportPanel } from "@/components/cv/generation-report";
 import { parseCustomSectionId } from "@/lib/cv/layout";
-import type { CvAction, CvDispatch } from "@/lib/cv/reducer";
+import type { CvDispatch } from "@/lib/cv/reducer";
 import { sectionTitle, type ItemSection, type Selection } from "@/lib/cv/selection";
 import type { CvData, GenerationReport, SectionId } from "@/types/cv";
 import { ArrowLeftIcon } from "./icons";
@@ -25,6 +25,8 @@ interface InspectorProps {
   onSelect: (selection: Selection) => void;
   dispatch: CvDispatch;
   generationReport: GenerationReport | null;
+  /** Adds an empty entry and selects it */
+  onAddEntry: (section: "experience" | "education" | "projects") => void;
 }
 
 /** Edits whatever is selected; the document's settings when nothing is. */
@@ -83,17 +85,17 @@ function HeaderInspector({ data, dispatch, onSelect }: InspectorProps) {
   );
 }
 
-const ADD_ACTIONS: Partial<Record<SectionId, { label: string; action: CvAction }>> = {
-  experience: { label: "+ Ajouter une expérience", action: { type: "ADD_EXPERIENCE" } },
-  education: { label: "+ Ajouter une formation", action: { type: "ADD_EDUCATION" } },
-  projects: { label: "+ Ajouter un projet", action: { type: "ADD_PROJECT" } },
+const ADD_LABELS: Partial<Record<SectionId, string>> = {
+  experience: "+ Ajouter une expérience",
+  education: "+ Ajouter une formation",
+  projects: "+ Ajouter un projet",
 };
 
-function SectionInspector({ data, dispatch, onSelect, section }: InspectorProps & { section: SectionId }) {
+function SectionInspector({ data, dispatch, onSelect, onAddEntry, section }: InspectorProps & { section: SectionId }) {
   const { hidden, toggle } = sectionVisibility(data, section);
   const customId = parseCustomSectionId(section);
   const custom = customId ? data.customSections?.find((s) => s.id === customId) : undefined;
-  const add = ADD_ACTIONS[section];
+  const addLabel = ADD_LABELS[section];
 
   const entries: { id: string; label: string }[] =
     section === "experience"
@@ -159,13 +161,13 @@ function SectionInspector({ data, dispatch, onSelect, section }: InspectorProps 
           ))}
         </ul>
       )}
-      {add && (
+      {addLabel && (
         <button
           type="button"
-          onClick={() => dispatch(add.action)}
+          onClick={() => onAddEntry(section as "experience" | "education" | "projects")}
           className="w-full rounded-md border border-dashed border-gray-300 py-1.5 text-sm text-gray-600 hover:border-gray-400 hover:text-gray-900"
         >
-          {add.label}
+          {addLabel}
         </button>
       )}
     </>

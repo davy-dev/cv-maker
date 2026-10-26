@@ -158,7 +158,10 @@ export function Canvas({
 
   function handleDoubleClick(e: React.MouseEvent) {
     if (panMode) return;
-    const element = (e.target as HTMLElement).closest("[data-field]");
+    const target = e.target as HTMLElement;
+    // On the text itself, or beside it in a block holding only that text (a title's full-width line)
+    const inside = target.querySelectorAll("[data-field]");
+    const element = target.closest("[data-field]") ?? (inside.length === 1 ? inside[0] : null);
     if (!element || !pageRef.current?.contains(element) || element.hasAttribute("data-editing")) return;
     const field = parseFieldKey(element.getAttribute("data-field")!);
     if (field) onStartEditing(field, { x: e.clientX, y: e.clientY });

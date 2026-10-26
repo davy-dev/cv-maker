@@ -4,7 +4,7 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 import type { AutosaveStatus } from "@/hooks/use-cv-autosave";
 import type { Tool } from "./canvas";
-import { ArrowLeftIcon, DownloadIcon, HandIcon, PointerIcon } from "./icons";
+import { ArrowLeftIcon, DownloadIcon, HandIcon, PointerIcon, RedoIcon, UndoIcon } from "./icons";
 
 const SAVE_LABELS: Record<AutosaveStatus, string> = {
   saved: "Enregistré",
@@ -26,6 +26,10 @@ interface ToolbarProps {
   saveStatus: AutosaveStatus;
   downloading: boolean;
   onDownload: () => void;
+  canUndo: boolean;
+  canRedo: boolean;
+  onUndo: () => void;
+  onRedo: () => void;
 }
 
 export function Toolbar(props: ToolbarProps) {
@@ -47,6 +51,14 @@ export function Toolbar(props: ToolbarProps) {
           </ToolButton>
           <ToolButton label="Main (H)" active={tool === "hand"} onClick={() => onToolChange("hand")}>
             <HandIcon />
+          </ToolButton>
+        </div>
+        <div className="flex items-center gap-1">
+          <ToolButton label="Annuler (⌘Z)" active={null} disabled={!props.canUndo} onClick={props.onUndo}>
+            <UndoIcon />
+          </ToolButton>
+          <ToolButton label="Rétablir (⇧⌘Z)" active={null} disabled={!props.canRedo} onClick={props.onRedo}>
+            <RedoIcon />
           </ToolButton>
         </div>
         <h1 className="truncate text-sm text-gray-300">{props.title}</h1>
@@ -93,11 +105,14 @@ export function Toolbar(props: ToolbarProps) {
 function ToolButton({
   label,
   active,
+  disabled = false,
   onClick,
   children,
 }: {
+  /** A tool (pressed or not); without it, a plain action button */
+  active: boolean | null;
   label: string;
-  active: boolean;
+  disabled?: boolean;
   onClick: () => void;
   children: React.ReactNode;
 }) {
@@ -105,11 +120,12 @@ function ToolButton({
     <button
       type="button"
       onClick={onClick}
+      disabled={disabled}
       aria-label={label}
       title={label}
-      aria-pressed={active}
+      aria-pressed={active ?? undefined}
       className={cn(
-        "flex h-8 w-8 items-center justify-center rounded",
+        "flex h-8 w-8 items-center justify-center rounded disabled:opacity-30 disabled:hover:bg-transparent",
         active ? "bg-[#0d99ff] text-white" : "text-gray-300 hover:bg-white/10"
       )}
     >

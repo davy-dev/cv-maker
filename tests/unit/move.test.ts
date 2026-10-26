@@ -31,9 +31,13 @@ describe("MOVE_ITEM", () => {
     expect(ids(apply(cv(), { type: "MOVE_ITEM", section: "experience", id: "a", before: "c" }))).toEqual(["b", "a", "c"]);
   });
 
-  it("ne change rien pour un élément déposé devant lui-même ou inconnu", () => {
+  it("ne change rien pour un élément déposé à sa place, devant lui-même ou inconnu", () => {
     const data = cv();
     expect(apply(data, { type: "MOVE_ITEM", section: "experience", id: "a", before: "a" })).toBe(data);
+    // Just in front of its next neighbour: where it already is
+    expect(apply(data, { type: "MOVE_ITEM", section: "experience", id: "a", before: "b" })).toBe(data);
+    expect(apply(data, { type: "MOVE_ITEM", section: "skills", id: "Outils", before: "Méthodes" })).toBe(data);
+    expect(apply(data, { type: "MOVE_SECTION", section: "summary", column: "main", before: "experience" })).toBe(data);
     expect(ids(apply(data, { type: "MOVE_ITEM", section: "experience", id: "zz", before: "a" }))).toEqual(["a", "b", "c"]);
   });
 

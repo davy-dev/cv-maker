@@ -87,3 +87,21 @@ export function DownloadIcon() {
     </Icon>
   );
 }
+
+export function UndoIcon() {
+  return (
+    <Icon>
+      <path d="M9 14L4 9l5-5" />
+      <path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11" />
+    </Icon>
+  );
+}
+
+export function RedoIcon() {
+  return (
+    <Icon>
+      <path d="M15 14l5-5-5-5" />
+      <path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13" />
+    </Icon>
+  );
+}
