@@ -63,7 +63,7 @@ describe("POST /api/ai/analyze", () => {
       title: "Dev React - Acme",
       jobOfferText,
       status: "draft",
-      templateId: "modern",
+      templateId: "executive",
       cvData: "{}",
     });
     expect(JSON.parse(cv!.matchedSkills!)).toEqual(analysis.matchedSkills);

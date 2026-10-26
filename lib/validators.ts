@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { VARIANT_IDS } from "@/lib/cv/variants";
 
 // Auth
 export const loginSchema = z.object({
@@ -105,12 +106,7 @@ export const analyzeJobSchema = z.object({
 });
 
 // CV Generation
-export const templateIdSchema = z.enum([
-  "modern",
-  "classic",
-  "minimalist",
-  "elegant",
-]);
+export const templateIdSchema = z.enum(VARIANT_IDS);
 
 export const generateCvSchema = z.object({
   cvId: z.string().min(1),

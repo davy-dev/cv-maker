@@ -1,0 +1,44 @@
+/* The letter keeps the CV's page, banner and fonts (executive-template.module.css) */
+.body {
+  padding: 32px 64px 48px;
+  font-size: 12.5px;
+  line-height: 1.55;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.recipient {
+  align-self: flex-end;
+  min-width: 220px;
+  margin-bottom: 8px;
+}
+
+.recipient .company {
+  font-weight: 700;
+}
+
+.dateLine {
+  align-self: flex-end;
+  color: var(--cv-muted);
+}
+
+.subject {
+  font-weight: 700;
+  color: var(--cv-heading-color);
+  margin: 8px 0 4px;
+}
+
+.paragraph {
+  margin: 0;
+  text-align: justify;
+  text-wrap: pretty;
+}
+
+.signature {
+  margin-top: 20px;
+  align-self: flex-end;
+  font-family: var(--cv-name-font);
+  font-size: 15px;
+  font-weight: 700;
+}

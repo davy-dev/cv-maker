@@ -63,6 +63,7 @@ export function CvPageTabs({
             cvId={cvId}
             initialData={initialCoverLetterData}
             templateId={initialTemplateId}
+            cvData={initialCvData}
           />
         )}
       </div>

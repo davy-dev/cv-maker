@@ -1,7 +1,6 @@
 import { parseList, type FactCatalog } from "./facts";
 import type { CvDraft, SourcedText } from "./schemas";
 import type { Claim } from "./verify";
-import { MAX_SECTION_PROJECTS } from "@/lib/cv/visibility";
 import type { CvData, CvExperience, CvProject, ProjectLink, ProjectType } from "@/types/cv";
 
 /**
@@ -10,9 +9,12 @@ import type { CvData, CvExperience, CvProject, ProjectLink, ProjectType } from "
  * always come from the database. Claude's sentences are kept only when they
  * passed verification; otherwise the candidate's own words are used.
  * Experiences and projects Claude left out are kept, hidden, so the user can
- * show them again from the editor. The projects section shows at most
- * MAX_SECTION_PROJECTS of Claude's picks; the others are hidden the same way.
+ * show them again from the editor. The projects section starts with at most
+ * SUGGESTED_SECTION_PROJECTS of Claude's picks, so the CV fits on one page;
+ * the others are hidden the same way, and can be shown.
  */
+export const SUGGESTED_SECTION_PROJECTS = 2;
+
 export function assembleCv(
   draft: CvDraft,
   catalog: FactCatalog,
@@ -71,7 +73,7 @@ export function assembleCv(
       : null;
     const displayMode = linkedExperienceId && row.displayMode === "under-experience" ? "under-experience" : "projects-section";
     const shown =
-      !!chosen && (displayMode === "under-experience" || ++sectionProjectsShown <= MAX_SECTION_PROJECTS);
+      !!chosen && (displayMode === "under-experience" || ++sectionProjectsShown <= SUGGESTED_SECTION_PROJECTS);
     return {
       id,
       name: row.name,

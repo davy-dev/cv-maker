@@ -50,22 +50,22 @@ async function downloadedPageCount(page: import("@playwright/test").Page) {
   return Number(pdf.match(/\/Count (\d+)/)![1]);
 }
 
-test("l'aperçu montre le vrai PDF et correspond au fichier téléchargé", async ({ page, user }) => {
-  // The projects section is capped at two cards, so the length comes from the experiences
+test("l'aperçu HTML annonce les pages, comme le PDF téléchargé", async ({ page, user }) => {
+  // A long CV, from its experiences
   const cvId = insertCv(user.email, 1, null, 12);
   await page.goto(`/cv/${cvId}`);
 
-  // Long CV: the preview shows every page and warns about it
-  await expect(page.getByText(/^\d+ pages — masquez des éléments/)).toBeVisible({ timeout: 20_000 });
-  const previewPages = await page.getByRole("img", { name: /^Page \d+ sur \d+$/ }).count();
-  expect(previewPages).toBeGreaterThan(1);
-  expect(await downloadedPageCount(page)).toBe(previewPages);
+  // The preview is the template itself, in HTML
+  await expect(page.getByRole("heading", { level: 1, name: "Camille Test" })).toBeVisible();
+
+  // Long CV: the preview warns about it, and the file has several pages too
+  await expect(page.getByText(/^≈ \d+ pages — masquez des éléments/)).toBeVisible();
+  expect(await downloadedPageCount(page)).toBeGreaterThan(1);
 
   // Hiding the experiences brings it back to one page, in the preview and in the file
   const experienceCard = page.locator("div").filter({ has: page.getByText("Expériences", { exact: true }) }).last();
   await experienceCard.getByLabel("Afficher sur le CV").first().uncheck();
-  await expect(page.getByText("1 page", { exact: true })).toBeVisible({ timeout: 20_000 });
-  await expect(page.getByRole("img", { name: /^Page \d+ sur \d+$/ })).toHaveCount(1);
+  await expect(page.getByText("1 page", { exact: true })).toBeVisible();
   expect(await downloadedPageCount(page)).toBe(1);
 });
 

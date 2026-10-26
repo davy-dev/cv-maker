@@ -47,7 +47,7 @@ export default async function CvListPage() {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {cvs.map((cv) => (
             <div key={cv.id} className="relative group">
-              <Link href={`/cv/${cv.id}`}>
+              <Link href={`/cv/${cv.id}/studio`}>
                 <Card className="hover:border-blue-300 transition-colors cursor-pointer h-full">
                   <CardContent className="p-5">
                     <div className="flex items-start justify-between mb-3">

@@ -9,6 +9,7 @@ import { scrapeCompany } from "@/lib/scraper";
 import { analyzeJobSchema } from "@/lib/validators";
 import { createId } from "@paralleldrive/cuid2";
 import { NextResponse } from "next/server";
+import { DEFAULT_VARIANT } from "@/lib/cv/variants";
 
 export async function POST(request: Request) {
   const userId = await getCurrentUserId();
@@ -69,7 +70,7 @@ export async function POST(request: Request) {
     matchedSkills: JSON.stringify(analysis.matchedSkills),
     missingSkills: JSON.stringify(analysis.missingSkills),
     cvData: "{}",
-    templateId: "modern",
+    templateId: DEFAULT_VARIANT,
     status: "draft",
   });
 

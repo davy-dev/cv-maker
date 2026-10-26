@@ -1,0 +1,361 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import { parseFieldKey, type EditableField } from "@/lib/cv/fields";
+import type { CvAction } from "@/lib/cv/reducer";
+import { parseSelectionKey, type Selection } from "@/lib/cv/selection";
+import { PAGE_HEIGHT, PAGE_WIDTH, pageBreaks } from "@/lib/cv/page";
+import { zoomAround, type Size, type View } from "@/lib/studio/view";
+import { findDragSource, findDropTarget, type DragSource, type DropTarget } from "./drag";
+
+export type Tool = "select" | "hand";
+
+/** Space between artboards on the canvas */
+export const ARTBOARD_GAP = 80;
+
+const SELECTION_COLOR = "#0d99ff";
+/** Screen pixels the pointer must travel before a press becomes a drag */
+const DRAG_THRESHOLD = 4;
+
+interface CanvasProps {
+  view: View;
+  /** False until the window size is known: the page is not drawn at a wrong place meanwhile */
+  ready: boolean;
+  onViewChange: (view: View) => void;
+  onViewportResize: (size: Size) => void;
+  /** Size of all artboards together, side by side */
+  onContentResize: (size: Size) => void;
+  tool: Tool;
+  /** Space held: drag pans whatever the tool */
+  spacePanning: boolean;
+  selectedKey: string | null;
+  onSelect: (selection: Selection) => void;
+  /** Double-click on a piece of text: edit it in place, caret where clicked */
+  onStartEditing: (field: EditableField, point: { x: number; y: number }) => void;
+  /** A section, entry or point dropped somewhere else on the page */
+  onMove: (action: CvAction) => void;
+  /** Pages laid out left to right: the CV, then its cover letter */
+  artboards: { id: string; title: string; content: React.ReactNode }[];
+}
+
+/** The workspace: the artboards holding the CV and its letter, panned and zoomed freely. */
+export function Canvas({
+  view,
+  ready,
+  onViewChange,
+  onViewportResize,
+  onContentResize,
+  tool,
+  spacePanning,
+  selectedKey,
+  onSelect,
+  onStartEditing,
+  onMove,
+  artboards,
+}: CanvasProps) {
+  const viewportRef = useRef<HTMLDivElement>(null);
+  const [hoveredKey, setHoveredKey] = useState<string | null>(null);
+  const [pan, setPan] = useState<{ pointerX: number; pointerY: number; view: View } | null>(null);
+  // A press on something movable; it becomes a drag once the pointer travels
+  const press = useRef<{
+    source: DragSource;
+    page: HTMLElement;
+    x: number;
+    y: number;
+    dragging: boolean;
+    target: DropTarget | null;
+  } | null>(null);
+  const [dragging, setDragging] = useState(false);
+  const [dropLine, setDropLine] = useState<{ artboard: string; line: DropTarget["line"] } | null>(null);
+
+  // Content height of each artboard, as measured; each is at least one A4 page
+  const heights = useRef(new Map<string, number>());
+  const artboardCount = artboards.length;
+  const reportHeight = (id: string, height: number) => {
+    heights.current.set(id, height);
+    onContentResize({
+      width: artboardCount * PAGE_WIDTH + (artboardCount - 1) * ARTBOARD_GAP,
+      height: Math.max(PAGE_HEIGHT, ...heights.current.values()),
+    });
+  };
+
+  // The wheel listener is attached once: it reads the latest props from here
+  const latest = useRef({ view, onViewChange });
+  useEffect(() => {
+    latest.current = { view, onViewChange };
+  });
+
+  useEffect(() => {
+    const viewport = viewportRef.current!;
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault(); // no browser zoom or page scroll
+      const { view, onViewChange } = latest.current;
+      if (e.ctrlKey || e.metaKey) {
+        // Pinch on a trackpad arrives as ctrl + wheel
+        const rect = viewport.getBoundingClientRect();
+        onViewChange(zoomAround(view, view.zoom * Math.exp(-e.deltaY * 0.01), e.clientX - rect.left, e.clientY - rect.top));
+      } else {
+        const [dx, dy] = e.shiftKey ? [e.deltaY, e.deltaX] : [e.deltaX, e.deltaY];
+        onViewChange({ ...view, x: view.x - dx, y: view.y - dy });
+      }
+    };
+    viewport.addEventListener("wheel", onWheel, { passive: false });
+
+    const resize = new ResizeObserver(([entry]) =>
+      onViewportResize({ width: entry.contentRect.width, height: entry.contentRect.height })
+    );
+    resize.observe(viewport);
+    return () => {
+      viewport.removeEventListener("wheel", onWheel);
+      resize.disconnect();
+    };
+  }, [onViewportResize]);
+
+  const panMode = tool === "hand" || spacePanning;
+
+  /** The artboard page the pointer is on, if any */
+  function pageOf(target: EventTarget | null): HTMLElement | null {
+    return (target as HTMLElement | null)?.closest?.<HTMLElement>("[data-artboard]") ?? null;
+  }
+
+  function selectableAt(target: EventTarget | null): string | null {
+    const element = (target as HTMLElement | null)?.closest?.("[data-select]");
+    return element && pageOf(element) ? element.getAttribute("data-select") : null;
+  }
+
+  function handlePointerDown(e: React.PointerEvent) {
+    if (panMode || e.button === 1) {
+      e.preventDefault();
+      e.currentTarget.setPointerCapture(e.pointerId);
+      setPan({ pointerX: e.clientX, pointerY: e.clientY, view });
+      return;
+    }
+    if (e.button !== 0) return;
+    // Clicks in the text being typed move the caret
+    if ((e.target as HTMLElement).closest("[data-editing]")) return;
+    const key = selectableAt(e.target);
+    onSelect((key && parseSelectionKey(key)) || { kind: "document" });
+    const page = pageOf(e.target);
+    const source = page && findDragSource(e.target as Element, page);
+    press.current = page && source ? { source, page, x: e.clientX, y: e.clientY, dragging: false, target: null } : null;
+  }
+
+  function endDrag(drop: boolean) {
+    const current = press.current;
+    press.current = null;
+    if (!current?.dragging) return;
+    current.source.element.style.opacity = "";
+    setDragging(false);
+    setDropLine(null);
+    if (drop && current.target) onMove(current.target.action);
+  }
+
+  function handleDoubleClick(e: React.MouseEvent) {
+    if (panMode) return;
+    const target = e.target as HTMLElement;
+    // On the text itself, or beside it in a block holding only that text (a title's full-width line)
+    const inside = target.querySelectorAll("[data-field]");
+    const element = target.closest("[data-field]") ?? (inside.length === 1 ? inside[0] : null);
+    if (!element || !pageOf(element) || element.hasAttribute("data-editing")) return;
+    const field = parseFieldKey(element.getAttribute("data-field")!);
+    if (field) onStartEditing(field, { x: e.clientX, y: e.clientY });
+  }
+
+  function handlePointerMove(e: React.PointerEvent) {
+    if (pan) {
+      onViewChange({
+        ...pan.view,
+        x: pan.view.x + e.clientX - pan.pointerX,
+        y: pan.view.y + e.clientY - pan.pointerY,
+      });
+      return;
+    }
+    const current = press.current;
+    if (current) {
+      if (!current.dragging && Math.hypot(e.clientX - current.x, e.clientY - current.y) > DRAG_THRESHOLD) {
+        current.dragging = true;
+        e.currentTarget.setPointerCapture(e.pointerId);
+        // Dimmed in place while it travels; React never sets this element's style
+        current.source.element.style.opacity = "0.35";
+        setDragging(true);
+        setHoveredKey(null);
+      }
+      if (current.dragging) {
+        current.target = findDropTarget(current.source, current.page, e.clientX, e.clientY, view.zoom);
+        setDropLine(current.target ? { artboard: current.page.dataset.artboard!, line: current.target.line } : null);
+        return;
+      }
+    }
+    setHoveredKey(panMode ? null : selectableAt(e.target));
+  }
+
+  const cursor = pan || dragging ? "grabbing" : panMode ? "grab" : "default";
+
+  return (
+    <div
+      ref={viewportRef}
+      className="relative flex-1 overflow-hidden bg-[#1e1e1e] select-none"
+      style={{ cursor, touchAction: "none" }}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onDoubleClick={handleDoubleClick}
+      onPointerUp={() => {
+        setPan(null);
+        endDrag(true);
+      }}
+      onPointerCancel={() => {
+        setPan(null);
+        endDrag(false);
+      }}
+      onPointerLeave={() => setHoveredKey(null)}
+      // Links on the CV (email, LinkedIn…) must not navigate while editing
+      onClickCapture={(e) => {
+        if ((e.target as HTMLElement).closest("a")) e.preventDefault();
+      }}
+      data-testid="studio-canvas"
+    >
+      <style>{outlineCss(selectedKey, hoveredKey)}</style>
+      <div
+        className="absolute left-0 top-0"
+        style={{
+          transform: `translate(${view.x}px, ${view.y}px) scale(${view.zoom})`,
+          transformOrigin: "0 0",
+          visibility: ready ? "visible" : "hidden",
+          ["--zoom" as string]: view.zoom,
+        }}
+      >
+        {artboards.map((artboard, index) => (
+          <Artboard
+            key={artboard.id}
+            id={artboard.id}
+            title={artboard.title}
+            left={index * (PAGE_WIDTH + ARTBOARD_GAP)}
+            zoom={view.zoom}
+            dropLine={dropLine?.artboard === artboard.id ? dropLine.line : null}
+            onHeight={reportHeight}
+          >
+            {artboard.content}
+          </Artboard>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** One page on the canvas, with its name above and its estimated page breaks. */
+function Artboard({
+  id,
+  title,
+  left,
+  zoom,
+  dropLine,
+  onHeight,
+  children,
+}: {
+  id: string;
+  title: string;
+  left: number;
+  zoom: number;
+  dropLine: DropTarget["line"] | null;
+  onHeight: (id: string, height: number) => void;
+  children: React.ReactNode;
+}) {
+  const contentRef = useRef<HTMLDivElement>(null);
+  // Height of the document itself: the page drawn below is at least one A4 sheet
+  const [contentHeight, setContentHeight] = useState(0);
+  const latestOnHeight = useRef(onHeight);
+  useEffect(() => {
+    latestOnHeight.current = onHeight;
+  });
+
+  useEffect(() => {
+    const resize = new ResizeObserver(([entry]) => {
+      setContentHeight(entry.contentRect.height);
+      latestOnHeight.current(id, entry.contentRect.height);
+    });
+    resize.observe(contentRef.current!);
+    return () => resize.disconnect();
+  }, [id]);
+
+  const breaks = pageBreaks(contentHeight);
+
+  return (
+    <div className="absolute top-0" style={{ left, width: PAGE_WIDTH }}>
+      {/* Artboard name, kept at the same size on screen whatever the zoom */}
+      <div
+        className="absolute bottom-full left-0 flex items-center gap-2 whitespace-nowrap pb-2 text-[13px] text-gray-400"
+        style={{ transform: `scale(${1 / zoom})`, transformOrigin: "0 100%" }}
+      >
+        <span>{title}</span>
+        {breaks.length > 0 && (
+          <span className="rounded bg-amber-500/20 px-1.5 py-0.5 text-[11px] text-amber-300">
+            {breaks.length + 1} pages
+          </span>
+        )}
+      </div>
+
+      <div
+        data-artboard={id}
+        aria-label={title}
+        className="relative bg-white shadow-[0_2px_24px_rgba(0,0,0,0.5)]"
+        style={{ width: PAGE_WIDTH, minHeight: PAGE_HEIGHT }}
+      >
+        <div ref={contentRef}>{children}</div>
+        {dropLine && (
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute"
+            style={{
+              top: dropLine.top,
+              left: dropLine.left,
+              width: dropLine.width,
+              height: `calc(2px / var(--zoom))`,
+              marginTop: `calc(-1px / var(--zoom))`,
+              background: SELECTION_COLOR,
+            }}
+            data-testid="drop-line"
+          />
+        )}
+        {breaks.map((top, i) => (
+          <div
+            key={top}
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-x-0 border-t border-dashed border-red-400"
+            style={{ top, borderTopWidth: `calc(1px / var(--zoom))` }}
+          >
+            <span
+              className="absolute right-full mr-2 -translate-y-1/2 whitespace-nowrap text-red-300"
+              style={{ fontSize: `calc(11px / var(--zoom))` }}
+            >
+              ≈ page {i + 2}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** Outlines are drawn by CSS on the CV's own elements: nothing to measure or keep in sync. */
+function outlineCss(selectedKey: string | null, hoveredKey: string | null): string {
+  const rules: string[] = [
+    // Empty slots of the studio: visible, but plainly not part of the CV
+    "[data-placeholder] { opacity: 0.45; font-style: italic; }",
+    `[data-editing] { outline: calc(1px / var(--zoom)) solid ${SELECTION_COLOR}; outline-offset: calc(1px / var(--zoom)); }`,
+  ];
+  if (hoveredKey && hoveredKey !== selectedKey) {
+    rules.push(
+      `[data-select="${escapeAttribute(hoveredKey)}"] { outline: calc(1px / var(--zoom)) solid ${SELECTION_COLOR}; outline-offset: calc(2px / var(--zoom)); }`
+    );
+  }
+  if (selectedKey) {
+    rules.push(
+      `[data-select="${escapeAttribute(selectedKey)}"] { outline: calc(2px / var(--zoom)) solid ${SELECTION_COLOR}; outline-offset: calc(2px / var(--zoom)); }`
+    );
+  }
+  return rules.join("\n");
+}
+
+function escapeAttribute(value: string): string {
+  return value.replace(/["\\]/g, "\\$&").replace(/[\n<]/g, " ");
+}

@@ -36,6 +36,8 @@ export default defineConfig({
       DATABASE_PATH: "data/e2e.db",
       UPLOAD_DIR: "data/e2e-uploads",
       AUTH_URL: baseURL,
+      // The PDF route prints with the same browser as the tests
+      PDF_BROWSER_CHANNEL: isCI ? "" : "chrome",
     },
   },
 });

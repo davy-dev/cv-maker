@@ -76,6 +76,27 @@ export interface ImagePosition {
 /** Sections that can be hidden from the PDF (projects use `showProjects`). */
 export type CvSection = "summary" | "experience" | "education" | "skills" | "interests";
 
+/** A section written freely by the user: soft skills, languages, tech watch… */
+export interface CvCustomSection {
+  id: string;
+  title: string;
+  /** One line per entry; **double asterisks** mark bold */
+  content: string;
+  hidden?: boolean;
+}
+
+export type BuiltInSectionId = "summary" | "experience" | "projects" | "skills" | "education" | "interests";
+export type CustomSectionId = `custom:${string}`;
+export type SectionId = BuiltInSectionId | CustomSectionId;
+
+/** Order of the sections in the two columns of HTML templates. */
+export interface CvLayout {
+  main: SectionId[];
+  aside: SectionId[];
+}
+
+export type CvColumn = keyof CvLayout;
+
 export interface CvData {
   header: CvHeader;
   summary: string;
@@ -94,9 +115,13 @@ export interface CvData {
   // Optional: CVs saved before these options existed don't have them
   hiddenSections?: CvSection[];
   hiddenSkillCategories?: string[];
+  customSections?: CvCustomSection[];
+  /** Missing: the template's default order (see lib/cv/layout.ts) */
+  layout?: CvLayout;
 }
 
-export type TemplateId = "modern" | "classic" | "minimalist" | "elegant";
+/** The CV's look: see lib/cv/variants.ts */
+export type TemplateId = import("@/lib/cv/variants").VariantId;
 
 export type CvStatus = "draft" | "final";
 
