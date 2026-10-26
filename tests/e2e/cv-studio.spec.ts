@@ -62,7 +62,7 @@ test("zoom au clavier et téléchargement du PDF", async ({ page, user }) => {
 
   const [download] = await Promise.all([
     page.waitForEvent("download"),
-    page.getByRole("button", { name: "PDF" }).click(),
+    page.getByRole("button", { name: "PDF du CV" }).click(),
   ]);
   expect(download.suggestedFilename()).toBe("CV_Camille_Test.pdf");
   expect(readFileSync((await download.path())!).subarray(0, 5).toString()).toBe("%PDF-");

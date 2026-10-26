@@ -8,81 +8,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CoverLetterPreview } from "@/components/cover-letter/cover-letter-preview";
 import { CoverLetterPdfDownloadButton } from "@/components/pdf/cover-letter-pdf-download-button";
-import type {
-  CoverLetterData,
-  CoverLetterRecipient,
-  TemplateId,
-} from "@/types/cv";
-
-// --- Default empty data ---
-
-const emptyCoverLetterData: CoverLetterData = {
-  recipient: {
-    companyName: "",
-    contactName: null,
-    contactTitle: null,
-    address: null,
-    city: null,
-  },
-  senderCity: "",
-  date: "",
-  subject: "",
-  opening: "Madame, Monsieur,",
-  introduction: "",
-  motivation: "",
-  skillsMatch: "",
-  conclusion: "",
-  closing:
-    "Veuillez agréer, Madame, Monsieur, l'expression de mes salutations distinguées.",
-  senderName: "",
-};
-
-// --- Reducer ---
-
-type CoverLetterAction =
-  | {
-      type: "SET_RECIPIENT_FIELD";
-      field: keyof CoverLetterRecipient;
-      value: string | null;
-    }
-  | {
-      type: "SET_FIELD";
-      field: keyof Omit<CoverLetterData, "recipient">;
-      value: string;
-    }
-  | { type: "REPLACE_ALL"; data: CoverLetterData };
-
-const coverLetterActionHandlers: Record<
-  CoverLetterAction["type"],
-  (state: CoverLetterData, action: CoverLetterAction) => CoverLetterData
-> = {
-  SET_RECIPIENT_FIELD: (state, action) => {
-    const a = action as Extract<
-      CoverLetterAction,
-      { type: "SET_RECIPIENT_FIELD" }
-    >;
-    return {
-      ...state,
-      recipient: { ...state.recipient, [a.field]: a.value },
-    };
-  },
-  SET_FIELD: (state, action) => {
-    const a = action as Extract<CoverLetterAction, { type: "SET_FIELD" }>;
-    return { ...state, [a.field]: a.value };
-  },
-  REPLACE_ALL: (_state, action) => {
-    const a = action as Extract<CoverLetterAction, { type: "REPLACE_ALL" }>;
-    return a.data;
-  },
-};
-
-function coverLetterReducer(
-  state: CoverLetterData,
-  action: CoverLetterAction
-): CoverLetterData {
-  const handler = coverLetterActionHandlers[action.type];
-  return handler ? handler(state, action) : state;
-}
+import { coverLetterReducer, emptyCoverLetterData, type LetterAction as CoverLetterAction } from "@/lib/cv/letter";
+import type { CoverLetterData, TemplateId } from "@/types/cv";
 
 // --- Helpers ---
 

@@ -84,12 +84,14 @@ export function LayersPanel({
   onSelect,
   dispatch,
   onAddCustomSection,
+  hasLetter,
 }: {
   data: CvData;
   selection: Selection;
   onSelect: (selection: Selection) => void;
   dispatch: CvDispatch;
   onAddCustomSection: () => void;
+  hasLetter: boolean;
 }) {
   const layout = resolveLayout(data);
   const [collapsed, setCollapsed] = useState<Set<SectionId>>(new Set());
@@ -237,6 +239,17 @@ export function LayersPanel({
             {layout[column].map((section, index, list) => renderSection(column, section, index, list))}
           </ColumnGroup>
         ))}
+        {hasLetter && (
+          <ul className="mt-3 border-t border-gray-100 pt-2">
+            <li>
+              <LayerRow
+                label="Lettre de motivation"
+                selected={selectedKey === "letter"}
+                onSelect={() => onSelect({ kind: "letter" })}
+              />
+            </li>
+          </ul>
+        )}
       </div>
       <div className="border-t border-gray-200 p-3">
         <button

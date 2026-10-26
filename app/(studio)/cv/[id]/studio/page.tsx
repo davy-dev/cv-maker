@@ -21,7 +21,13 @@ export default async function CvStudioPage({ params }: PageProps<"/cv/[id]/studi
 
   return (
     <div className={`${cvFontVariables} h-screen overflow-hidden`}>
-      <Studio cvId={cv.id} title={cv.title} initialData={cv.cvData} generationReport={cv.generationReport} />
+      <Studio
+        cvId={cv.id}
+        title={cv.title}
+        initialData={cv.cvData}
+        initialLetter={cv.coverLetterData}
+        generationReport={cv.generationReport}
+      />
     </div>
   );
 }

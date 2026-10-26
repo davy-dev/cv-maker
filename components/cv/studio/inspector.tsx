@@ -7,6 +7,7 @@ import { EducationFields } from "@/components/cv/editor/education-fields";
 import { ExperienceFields } from "@/components/cv/editor/experience-fields";
 import { HeaderFields } from "@/components/cv/editor/header-fields";
 import { InterestsFields } from "@/components/cv/editor/interests-fields";
+import { LetterFields } from "@/components/cv/editor/letter-fields";
 import { ItemHeader } from "@/components/cv/editor/item-header";
 import { ProjectFields } from "@/components/cv/editor/project-fields";
 import { ShowOnCvToggle } from "@/components/cv/editor/show-on-cv-toggle";
@@ -15,12 +16,15 @@ import { GenerationReportPanel } from "@/components/cv/generation-report";
 import { parseCustomSectionId } from "@/lib/cv/layout";
 import type { CvDispatch } from "@/lib/cv/reducer";
 import { sectionTitle, type ItemSection, type Selection } from "@/lib/cv/selection";
-import type { CvData, GenerationReport, SectionId } from "@/types/cv";
+import type { LetterAction } from "@/lib/cv/letter";
+import type { CoverLetterData, CvData, GenerationReport, SectionId } from "@/types/cv";
 import { ArrowLeftIcon } from "./icons";
 import { sectionVisibility } from "./layers-panel";
 
 interface InspectorProps {
   data: CvData;
+  letter: CoverLetterData | null;
+  dispatchLetter: (action: LetterAction) => void;
   selection: Selection;
   onSelect: (selection: Selection) => void;
   dispatch: CvDispatch;
@@ -37,6 +41,14 @@ export function Inspector(props: InspectorProps) {
       <div className="flex-1 space-y-4 overflow-y-auto p-4">
         {selection.kind === "document" && <DocumentInspector {...props} />}
         {selection.kind === "header" && <HeaderInspector {...props} />}
+        {selection.kind === "letter" && props.letter && (
+          <>
+            <Title back={{ label: "Document", onClick: () => props.onSelect({ kind: "document" }) }}>
+              Lettre de motivation
+            </Title>
+            <LetterFields letter={props.letter} dispatch={props.dispatchLetter} />
+          </>
+        )}
         {selection.kind === "section" && <SectionInspector {...props} section={selection.section} />}
         {selection.kind === "item" && <ItemInspector {...props} section={selection.section} id={selection.id} />}
       </div>

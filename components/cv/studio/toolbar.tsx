@@ -24,8 +24,10 @@ interface ToolbarProps {
   onZoomFit: () => void;
   onZoomReset: () => void;
   saveStatus: AutosaveStatus;
-  downloading: boolean;
-  onDownload: () => void;
+  /** The document whose PDF is being made, if any */
+  downloading: "cv" | "letter" | null;
+  onDownload: (doc: "cv" | "letter") => void;
+  hasLetter: boolean;
   canUndo: boolean;
   canRedo: boolean;
   onUndo: () => void;
@@ -88,17 +90,54 @@ export function Toolbar(props: ToolbarProps) {
             Ajuster
           </button>
         </div>
-        <button
-          type="button"
-          onClick={props.onDownload}
-          disabled={props.downloading}
-          className="flex h-8 items-center gap-2 rounded bg-[#0d99ff] px-3 text-sm font-medium text-white hover:bg-[#0b85de] disabled:opacity-60"
+        <DownloadButton
+          label="PDF du CV"
+          busy={props.downloading === "cv"}
+          disabled={props.downloading !== null}
+          onClick={() => props.onDownload("cv")}
         >
-          <DownloadIcon />
-          {props.downloading ? "Génération…" : "PDF"}
-        </button>
+          CV
+        </DownloadButton>
+        {props.hasLetter && (
+          <DownloadButton
+            label="PDF de la lettre"
+            busy={props.downloading === "letter"}
+            disabled={props.downloading !== null}
+            onClick={() => props.onDownload("letter")}
+          >
+            Lettre
+          </DownloadButton>
+        )}
       </div>
     </header>
+  );
+}
+
+function DownloadButton({
+  label,
+  busy,
+  disabled,
+  onClick,
+  children,
+}: {
+  label: string;
+  busy: boolean;
+  disabled: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={label}
+      title={label}
+      className="flex h-8 items-center gap-2 rounded bg-[#0d99ff] px-3 text-sm font-medium text-white hover:bg-[#0b85de] disabled:opacity-60"
+    >
+      <DownloadIcon />
+      {busy ? "Génération…" : children}
+    </button>
   );
 }
 

@@ -8,6 +8,8 @@ export type ItemSection = "experience" | "education" | "projects" | "skills";
 export type Selection =
   | { kind: "document" }
   | { kind: "header" }
+  /** The cover letter, as a whole */
+  | { kind: "letter" }
   | { kind: "section"; section: SectionId }
   /** `id` is the entry's id; for skills, the category name */
   | { kind: "item"; section: ItemSection; id: string };
@@ -19,6 +21,7 @@ export function selectionKey(selection: Selection): string {
   switch (selection.kind) {
     case "document":
     case "header":
+    case "letter":
       return selection.kind;
     case "section":
       return `section:${selection.section}`;
@@ -28,7 +31,7 @@ export function selectionKey(selection: Selection): string {
 }
 
 export function parseSelectionKey(key: string): Selection | null {
-  if (key === "document" || key === "header") return { kind: key };
+  if (key === "document" || key === "header" || key === "letter") return { kind: key };
   if (key.startsWith("section:")) return { kind: "section", section: key.slice("section:".length) as SectionId };
   if (key.startsWith("item:")) {
     const rest = key.slice("item:".length);

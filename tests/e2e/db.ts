@@ -1,7 +1,22 @@
 import Database from "better-sqlite3";
 
 // The CV is written straight into the E2E database: the app never calls Claude here.
-export function insertCv(email: string, experienceCount = 1): string {
+/** A cover letter as generated, for tests that need one. */
+export const LETTER = {
+  recipient: { companyName: "Acme", contactName: "Mme Durand", contactTitle: null, address: null, city: "Lyon" },
+  senderCity: "Lyon",
+  date: "26 octobre 2026",
+  subject: "Objet : Candidature au poste de développeuse",
+  opening: "Madame,",
+  introduction: "Je vous propose ma candidature.",
+  motivation: "Votre mission me parle.",
+  skillsMatch: "J'ai livré des API en TypeScript.",
+  conclusion: "Je serais ravie d'en parler.",
+  closing: "Bien cordialement.",
+  senderName: "Camille Test",
+};
+
+export function insertCv(email: string, experienceCount = 1, { withLetter = false } = {}): string {
   const db = new Database("data/e2e.db");
   try {
     const { id: userId } = db.prepare("SELECT id FROM users WHERE email = ?").get(email) as { id: string };
@@ -26,8 +41,17 @@ export function insertCv(email: string, experienceCount = 1): string {
       interests: ["Piano"],
     };
     db.prepare(
-      "INSERT INTO generated_cvs (id, user_id, title, job_offer_text, cv_data, template_id, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, 'modern', 'draft', ?, ?)"
-    ).run(cvId, userId, "Test", "Offre", JSON.stringify(cvData), Date.now() / 1000, Date.now() / 1000);
+      "INSERT INTO generated_cvs (id, user_id, title, job_offer_text, cv_data, cover_letter_data, template_id, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, 'modern', 'draft', ?, ?)"
+    ).run(
+      cvId,
+      userId,
+      "Test",
+      "Offre",
+      JSON.stringify(cvData),
+      withLetter ? JSON.stringify(LETTER) : null,
+      Date.now() / 1000,
+      Date.now() / 1000
+    );
     return cvId;
   } finally {
     db.close();

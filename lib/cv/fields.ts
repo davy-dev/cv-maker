@@ -1,3 +1,4 @@
+import type { LetterField } from "@/lib/cv/letter";
 import type { CvAction } from "@/lib/cv/reducer";
 import type { CvData } from "@/types/cv";
 
@@ -22,12 +23,15 @@ export type CvField =
   | { kind: "customTitle"; id: string }
   | { kind: "customLine"; id: string; index: number };
 
+/** Any text editable on the studio's pages: the CV's, or the cover letter's. */
+export type EditableField = CvField | LetterField;
+
 /** Written on the page as data-field, so a double-click finds what to edit. */
-export function fieldKey(field: CvField): string {
+export function fieldKey(field: EditableField): string {
   return JSON.stringify(field);
 }
 
-export function parseFieldKey(key: string): CvField | null {
+export function parseFieldKey(key: string): EditableField | null {
   try {
     const field = JSON.parse(key);
     return field && typeof field.kind === "string" ? field : null;
@@ -40,7 +44,7 @@ export function parseFieldKey(key: string): CvField | null {
  * Whether each keystroke goes to the CV. Renaming a skill category changes its
  * address, and a skill list is split on commas: both are written once, when done.
  */
-export function isLiveField(field: CvField): boolean {
+export function isLiveField(field: EditableField): boolean {
   return field.kind !== "skillCategory" && field.kind !== "skillList";
 }
 

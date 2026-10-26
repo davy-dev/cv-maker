@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { verifySession } from "@/lib/auth/session";
 import { loadUserCv } from "@/lib/cv/load";
 import { applyVisibility } from "@/lib/cv/visibility";
+import { ExecutiveLetter } from "@/components/cv/templates-html/executive-letter";
 import { ExecutiveTemplate } from "@/components/cv/templates-html/executive-template";
 import { cvFontVariables } from "@/components/cv/templates-html/fonts";
 
@@ -13,22 +14,28 @@ const PRINT_CSS = `
 `;
 
 /**
- * The CV alone, as printed. Opened by Chromium in app/api/cv/[id]/pdf/route.ts
- * with the user's session cookie; can also be opened directly to check the layout.
+ * The CV alone, or its cover letter with ?doc=letter, as printed. Opened by
+ * Chromium in app/api/cv/[id]/pdf/route.ts with the user's session cookie;
+ * can also be opened directly to check the layout.
  */
-export default async function CvPrintPage({ params }: PageProps<"/cv/[id]/print">) {
+export default async function CvPrintPage({ params, searchParams }: PageProps<"/cv/[id]/print">) {
   const { id } = await params;
+  const { doc } = await searchParams;
   const userId = await verifySession();
 
   const cv = await loadUserCv(id, userId);
-  if (!cv) {
+  if (!cv || (doc === "letter" && !cv.coverLetterData)) {
     notFound();
   }
 
   return (
     <div className={cvFontVariables}>
       <style>{PRINT_CSS}</style>
-      <ExecutiveTemplate data={applyVisibility(cv.cvData)} />
+      {doc === "letter" ? (
+        <ExecutiveLetter cv={cv.cvData} letter={cv.coverLetterData!} />
+      ) : (
+        <ExecutiveTemplate data={applyVisibility(cv.cvData)} />
+      )}
     </div>
   );
 }

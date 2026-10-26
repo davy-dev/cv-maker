@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useRef } from "react";
-import { fieldKey, type CvField } from "@/lib/cv/fields";
+import { fieldKey, type EditableField } from "@/lib/cv/fields";
 import { RichText } from "./rich-text";
 
 export type FinishReason = "commit" | "cancel" | "enter" | "delete-empty";
@@ -9,17 +9,17 @@ export type FinishReason = "commit" | "cancel" | "enter" | "delete-empty";
 /** Given by the studio; absent when printing, where text is just text. */
 export interface EditingApi {
   /** The field being typed into, if any */
-  editing: CvField | null;
+  editing: EditableField | null;
   /** Where the double-click was, to put the caret there */
   caretPoint: { x: number; y: number } | null;
-  onInput: (field: CvField, value: string) => void;
-  onFinish: (field: CvField, reason: FinishReason, value: string) => void;
+  onInput: (field: EditableField, value: string) => void;
+  onFinish: (field: EditableField, reason: FinishReason, value: string) => void;
 }
 
 export const EditingContext = createContext<EditingApi | null>(null);
 
 interface EditableProps {
-  field: CvField;
+  field: EditableField;
   /** The stored text, **bold** markers included */
   value: string;
   /** What to show when not editing; defaults to the value */
@@ -60,7 +60,7 @@ export function WhenFilled({
   value,
   children,
 }: {
-  field: CvField;
+  field: EditableField;
   value: string | null | undefined;
   children: React.ReactNode;
 }) {
@@ -79,7 +79,7 @@ function EditingSpan({
   api,
   fieldKeyValue,
 }: {
-  field: CvField;
+  field: EditableField;
   initialValue: string;
   api: EditingApi;
   fieldKeyValue: string;

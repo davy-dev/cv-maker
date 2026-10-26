@@ -23,109 +23,11 @@ interface TemplateProps {
  * Expects data already passed through applyVisibility().
  */
 export function ExecutiveTemplate({ data, editable = false }: TemplateProps) {
-  const { header } = data;
   const layout = resolveLayout(data);
-  const position = data.headerBgImagePosition ?? { x: 50, y: 50 };
-  const placeholder = (text: string) => (editable ? text : undefined);
 
   return (
     <div className={styles.page}>
-      <header
-        data-select="header"
-        className={styles.header}
-        style={{
-          background: data.headerBgColor || DEFAULT_HEADER_BG,
-          color: data.headerTextColor || DEFAULT_HEADER_TEXT,
-        }}
-      >
-        {data.headerBgImage && (
-          // eslint-disable-next-line @next/next/no-img-element -- printed by Chromium, no optimization wanted
-          <img
-            src={data.headerBgImage}
-            alt=""
-            className={styles.headerBgImage}
-            style={{ objectPosition: `${position.x}% ${position.y}%` }}
-          />
-        )}
-        {data.showPhoto &&
-          (header.image ? (
-            // eslint-disable-next-line @next/next/no-img-element -- printed by Chromium, no optimization wanted
-            <img src={header.image} alt={header.name} className={styles.photo} />
-          ) : (
-            <div className={styles.photoPlaceholder} aria-hidden="true">
-              {header.name?.[0] ?? "?"}
-            </div>
-          ))}
-        <div className={styles.headerContent}>
-          <h1 className={styles.name}>
-            <Editable field={{ kind: "header", field: "name" }} value={header.name} placeholder={placeholder("Votre nom")} />
-          </h1>
-          {(header.title || editable) && (
-            <div className={styles.title}>
-              <Editable
-                field={{ kind: "header", field: "title" }}
-                value={header.title}
-                placeholder={placeholder("Titre du poste visé")}
-              />
-            </div>
-          )}
-          {(data.yearsExperience || header.location || editable) && (
-            <div className={styles.subtitle}>
-              <Editable
-                field={{ kind: "yearsExperience" }}
-                value={data.yearsExperience}
-                placeholder={placeholder("Années d'expérience")}
-              />
-              {data.yearsExperience && header.location && " · "}
-              <Editable field={{ kind: "header", field: "location" }} value={header.location} />
-            </div>
-          )}
-          <div className={styles.contacts}>
-            <WhenFilled field={{ kind: "header", field: "email" }} value={header.email}>
-              <a className={styles.contact} href={`mailto:${header.email}`}>
-                <MailIcon />
-                <Editable field={{ kind: "header", field: "email" }} value={header.email} />
-              </a>
-            </WhenFilled>
-            <WhenFilled field={{ kind: "header", field: "phone" }} value={header.phone}>
-              <span className={styles.contact}>
-                <PhoneIcon />
-                <Editable field={{ kind: "header", field: "phone" }} value={header.phone} />
-              </span>
-            </WhenFilled>
-            <WhenFilled field={{ kind: "header", field: "linkedin" }} value={header.linkedin}>
-              <a className={styles.contact} href={toHref(header.linkedin ?? "")}>
-                <LinkedinIcon />
-                <Editable
-                  field={{ kind: "header", field: "linkedin" }}
-                  value={header.linkedin ?? ""}
-                  display={toDisplayUrl(header.linkedin ?? "")}
-                />
-              </a>
-            </WhenFilled>
-            <WhenFilled field={{ kind: "header", field: "github" }} value={header.github}>
-              <a className={styles.contact} href={toHref(header.github ?? "")}>
-                <GithubIcon />
-                <Editable
-                  field={{ kind: "header", field: "github" }}
-                  value={header.github ?? ""}
-                  display={toDisplayUrl(header.github ?? "")}
-                />
-              </a>
-            </WhenFilled>
-            <WhenFilled field={{ kind: "header", field: "website" }} value={header.website}>
-              <a className={styles.contact} href={toHref(header.website ?? "")}>
-                <GlobeIcon />
-                <Editable
-                  field={{ kind: "header", field: "website" }}
-                  value={header.website ?? ""}
-                  display={toDisplayUrl(header.website ?? "")}
-                />
-              </a>
-            </WhenFilled>
-          </div>
-        </div>
-      </header>
+      <ExecutiveHeader data={data} editable={editable} />
 
       <div className={styles.body}>
         <main className={styles.main}>
@@ -140,6 +42,112 @@ export function ExecutiveTemplate({ data, editable = false }: TemplateProps) {
         </aside>
       </div>
     </div>
+  );
+}
+
+/** The banner with name, title and contacts: shared by the CV and its cover letter. */
+export function ExecutiveHeader({ data, editable = false }: TemplateProps) {
+  const { header } = data;
+  const position = data.headerBgImagePosition ?? { x: 50, y: 50 };
+  const placeholder = (text: string) => (editable ? text : undefined);
+
+  return (
+    <header
+      data-select="header"
+      className={styles.header}
+      style={{
+        background: data.headerBgColor || DEFAULT_HEADER_BG,
+        color: data.headerTextColor || DEFAULT_HEADER_TEXT,
+      }}
+    >
+      {data.headerBgImage && (
+        // eslint-disable-next-line @next/next/no-img-element -- printed by Chromium, no optimization wanted
+        <img
+          src={data.headerBgImage}
+          alt=""
+          className={styles.headerBgImage}
+          style={{ objectPosition: `${position.x}% ${position.y}%` }}
+        />
+      )}
+      {data.showPhoto &&
+        (header.image ? (
+          // eslint-disable-next-line @next/next/no-img-element -- printed by Chromium, no optimization wanted
+          <img src={header.image} alt={header.name} className={styles.photo} />
+        ) : (
+          <div className={styles.photoPlaceholder} aria-hidden="true">
+            {header.name?.[0] ?? "?"}
+          </div>
+        ))}
+      <div className={styles.headerContent}>
+        <h1 className={styles.name}>
+          <Editable field={{ kind: "header", field: "name" }} value={header.name} placeholder={placeholder("Votre nom")} />
+        </h1>
+        {(header.title || editable) && (
+          <div className={styles.title}>
+            <Editable
+              field={{ kind: "header", field: "title" }}
+              value={header.title}
+              placeholder={placeholder("Titre du poste visé")}
+            />
+          </div>
+        )}
+        {(data.yearsExperience || header.location || editable) && (
+          <div className={styles.subtitle}>
+            <Editable
+              field={{ kind: "yearsExperience" }}
+              value={data.yearsExperience}
+              placeholder={placeholder("Années d'expérience")}
+            />
+            {data.yearsExperience && header.location && " · "}
+            <Editable field={{ kind: "header", field: "location" }} value={header.location} />
+          </div>
+        )}
+        <div className={styles.contacts}>
+          <WhenFilled field={{ kind: "header", field: "email" }} value={header.email}>
+            <a className={styles.contact} href={`mailto:${header.email}`}>
+              <MailIcon />
+              <Editable field={{ kind: "header", field: "email" }} value={header.email} />
+            </a>
+          </WhenFilled>
+          <WhenFilled field={{ kind: "header", field: "phone" }} value={header.phone}>
+            <span className={styles.contact}>
+              <PhoneIcon />
+              <Editable field={{ kind: "header", field: "phone" }} value={header.phone} />
+            </span>
+          </WhenFilled>
+          <WhenFilled field={{ kind: "header", field: "linkedin" }} value={header.linkedin}>
+            <a className={styles.contact} href={toHref(header.linkedin ?? "")}>
+              <LinkedinIcon />
+              <Editable
+                field={{ kind: "header", field: "linkedin" }}
+                value={header.linkedin ?? ""}
+                display={toDisplayUrl(header.linkedin ?? "")}
+              />
+            </a>
+          </WhenFilled>
+          <WhenFilled field={{ kind: "header", field: "github" }} value={header.github}>
+            <a className={styles.contact} href={toHref(header.github ?? "")}>
+              <GithubIcon />
+              <Editable
+                field={{ kind: "header", field: "github" }}
+                value={header.github ?? ""}
+                display={toDisplayUrl(header.github ?? "")}
+              />
+            </a>
+          </WhenFilled>
+          <WhenFilled field={{ kind: "header", field: "website" }} value={header.website}>
+            <a className={styles.contact} href={toHref(header.website ?? "")}>
+              <GlobeIcon />
+              <Editable
+                field={{ kind: "header", field: "website" }}
+                value={header.website ?? ""}
+                display={toDisplayUrl(header.website ?? "")}
+              />
+            </a>
+          </WhenFilled>
+        </div>
+      </div>
+    </header>
   );
 }
 

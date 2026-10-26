@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { parseFieldKey, type CvField } from "@/lib/cv/fields";
+import { parseFieldKey, type EditableField } from "@/lib/cv/fields";
 import type { CvAction } from "@/lib/cv/reducer";
 import { parseSelectionKey, type Selection } from "@/lib/cv/selection";
 import { zoomAround, type Size, type View } from "@/lib/studio/view";
@@ -13,6 +13,9 @@ export type Tool = "select" | "hand";
 export const PAGE_WIDTH = 794;
 const PAGE_HEIGHT = 1123;
 const PRINT_MARGIN = 45;
+
+/** Space between artboards on the canvas */
+export const ARTBOARD_GAP = 80;
 
 const SELECTION_COLOR = "#0d99ff";
 /** Screen pixels the pointer must travel before a press becomes a drag */
@@ -38,49 +41,61 @@ interface CanvasProps {
   ready: boolean;
   onViewChange: (view: View) => void;
   onViewportResize: (size: Size) => void;
-  onPageResize: (size: Size) => void;
+  /** Size of all artboards together, side by side */
+  onContentResize: (size: Size) => void;
   tool: Tool;
   /** Space held: drag pans whatever the tool */
   spacePanning: boolean;
   selectedKey: string | null;
   onSelect: (selection: Selection) => void;
   /** Double-click on a piece of text: edit it in place, caret where clicked */
-  onStartEditing: (field: CvField, point: { x: number; y: number }) => void;
+  onStartEditing: (field: EditableField, point: { x: number; y: number }) => void;
   /** A section, entry or point dropped somewhere else on the page */
   onMove: (action: CvAction) => void;
-  title: string;
-  children: React.ReactNode;
+  /** Pages laid out left to right: the CV, then its cover letter */
+  artboards: { id: string; title: string; content: React.ReactNode }[];
 }
 
-/** The workspace: one artboard holding the CV page, panned and zoomed freely. */
+/** The workspace: the artboards holding the CV and its letter, panned and zoomed freely. */
 export function Canvas({
   view,
   ready,
   onViewChange,
   onViewportResize,
-  onPageResize,
+  onContentResize,
   tool,
   spacePanning,
   selectedKey,
   onSelect,
   onStartEditing,
   onMove,
-  title,
-  children,
+  artboards,
 }: CanvasProps) {
   const viewportRef = useRef<HTMLDivElement>(null);
-  const pageRef = useRef<HTMLDivElement>(null);
-  const contentRef = useRef<HTMLDivElement>(null);
-  // Height of the CV itself: the artboard below is at least one A4 page
-  const [contentHeight, setContentHeight] = useState(0);
   const [hoveredKey, setHoveredKey] = useState<string | null>(null);
   const [pan, setPan] = useState<{ pointerX: number; pointerY: number; view: View } | null>(null);
   // A press on something movable; it becomes a drag once the pointer travels
-  const press = useRef<{ source: DragSource; x: number; y: number; dragging: boolean; target: DropTarget | null } | null>(
-    null
-  );
+  const press = useRef<{
+    source: DragSource;
+    page: HTMLElement;
+    x: number;
+    y: number;
+    dragging: boolean;
+    target: DropTarget | null;
+  } | null>(null);
   const [dragging, setDragging] = useState(false);
-  const [dropLine, setDropLine] = useState<DropTarget["line"] | null>(null);
+  const [dropLine, setDropLine] = useState<{ artboard: string; line: DropTarget["line"] } | null>(null);
+
+  // Content height of each artboard, as measured; each is at least one A4 page
+  const heights = useRef(new Map<string, number>());
+  const artboardCount = artboards.length;
+  const reportHeight = (id: string, height: number) => {
+    heights.current.set(id, height);
+    onContentResize({
+      width: artboardCount * PAGE_WIDTH + (artboardCount - 1) * ARTBOARD_GAP,
+      height: Math.max(PAGE_HEIGHT, ...heights.current.values()),
+    });
+  };
 
   // The wheel listener is attached once: it reads the latest props from here
   const latest = useRef({ view, onViewChange });
@@ -114,20 +129,16 @@ export function Canvas({
     };
   }, [onViewportResize]);
 
-  useEffect(() => {
-    const resize = new ResizeObserver(([entry]) => {
-      setContentHeight(entry.contentRect.height);
-      onPageResize({ width: PAGE_WIDTH, height: Math.max(PAGE_HEIGHT, entry.contentRect.height) });
-    });
-    resize.observe(contentRef.current!);
-    return () => resize.disconnect();
-  }, [onPageResize]);
-
   const panMode = tool === "hand" || spacePanning;
+
+  /** The artboard page the pointer is on, if any */
+  function pageOf(target: EventTarget | null): HTMLElement | null {
+    return (target as HTMLElement | null)?.closest?.<HTMLElement>("[data-artboard]") ?? null;
+  }
 
   function selectableAt(target: EventTarget | null): string | null {
     const element = (target as HTMLElement | null)?.closest?.("[data-select]");
-    return element && pageRef.current?.contains(element) ? element.getAttribute("data-select") : null;
+    return element && pageOf(element) ? element.getAttribute("data-select") : null;
   }
 
   function handlePointerDown(e: React.PointerEvent) {
@@ -142,8 +153,9 @@ export function Canvas({
     if ((e.target as HTMLElement).closest("[data-editing]")) return;
     const key = selectableAt(e.target);
     onSelect((key && parseSelectionKey(key)) || { kind: "document" });
-    const source = pageRef.current && findDragSource(e.target as Element, pageRef.current);
-    press.current = source ? { source, x: e.clientX, y: e.clientY, dragging: false, target: null } : null;
+    const page = pageOf(e.target);
+    const source = page && findDragSource(e.target as Element, page);
+    press.current = page && source ? { source, page, x: e.clientX, y: e.clientY, dragging: false, target: null } : null;
   }
 
   function endDrag(drop: boolean) {
@@ -162,7 +174,7 @@ export function Canvas({
     // On the text itself, or beside it in a block holding only that text (a title's full-width line)
     const inside = target.querySelectorAll("[data-field]");
     const element = target.closest("[data-field]") ?? (inside.length === 1 ? inside[0] : null);
-    if (!element || !pageRef.current?.contains(element) || element.hasAttribute("data-editing")) return;
+    if (!element || !pageOf(element) || element.hasAttribute("data-editing")) return;
     const field = parseFieldKey(element.getAttribute("data-field")!);
     if (field) onStartEditing(field, { x: e.clientX, y: e.clientY });
   }
@@ -177,7 +189,7 @@ export function Canvas({
       return;
     }
     const current = press.current;
-    if (current && pageRef.current) {
+    if (current) {
       if (!current.dragging && Math.hypot(e.clientX - current.x, e.clientY - current.y) > DRAG_THRESHOLD) {
         current.dragging = true;
         e.currentTarget.setPointerCapture(e.pointerId);
@@ -187,15 +199,14 @@ export function Canvas({
         setHoveredKey(null);
       }
       if (current.dragging) {
-        current.target = findDropTarget(current.source, pageRef.current, e.clientX, e.clientY, view.zoom);
-        setDropLine(current.target?.line ?? null);
+        current.target = findDropTarget(current.source, current.page, e.clientX, e.clientY, view.zoom);
+        setDropLine(current.target ? { artboard: current.page.dataset.artboard!, line: current.target.line } : null);
         return;
       }
     }
     setHoveredKey(panMode ? null : selectableAt(e.target));
   }
 
-  const breaks = pageBreaks(contentHeight);
   const cursor = pan || dragging ? "grabbing" : panMode ? "grab" : "default";
 
   return (
@@ -231,56 +242,113 @@ export function Canvas({
           ["--zoom" as string]: view.zoom,
         }}
       >
-        {/* Artboard name, kept at the same size on screen whatever the zoom */}
-        <div
-          className="absolute bottom-full left-0 flex items-center gap-2 whitespace-nowrap pb-2 text-[13px] text-gray-400"
-          style={{ transform: `scale(${1 / view.zoom})`, transformOrigin: "0 100%" }}
-        >
-          <span>{title}</span>
-          {breaks.length > 0 && (
-            <span className="rounded bg-amber-500/20 px-1.5 py-0.5 text-[11px] text-amber-300">
-              {breaks.length + 1} pages
-            </span>
-          )}
-        </div>
+        {artboards.map((artboard, index) => (
+          <Artboard
+            key={artboard.id}
+            id={artboard.id}
+            title={artboard.title}
+            left={index * (PAGE_WIDTH + ARTBOARD_GAP)}
+            zoom={view.zoom}
+            dropLine={dropLine?.artboard === artboard.id ? dropLine.line : null}
+            onHeight={reportHeight}
+          >
+            {artboard.content}
+          </Artboard>
+        ))}
+      </div>
+    </div>
+  );
+}
 
-        <div
-          ref={pageRef}
-          className="relative bg-white shadow-[0_2px_24px_rgba(0,0,0,0.5)]"
-          style={{ width: PAGE_WIDTH, minHeight: PAGE_HEIGHT }}
-        >
-          <div ref={contentRef}>{children}</div>
-          {dropLine && (
-            <div
-              aria-hidden="true"
-              className="pointer-events-none absolute"
-              style={{
-                top: dropLine.top,
-                left: dropLine.left,
-                width: dropLine.width,
-                height: `calc(2px / var(--zoom))`,
-                marginTop: `calc(-1px / var(--zoom))`,
-                background: SELECTION_COLOR,
-              }}
-              data-testid="drop-line"
-            />
-          )}
-          {breaks.map((top, i) => (
-            <div
-              key={top}
-              aria-hidden="true"
-              className="pointer-events-none absolute inset-x-0 border-t border-dashed border-red-400"
-              style={{ top, borderTopWidth: `calc(1px / var(--zoom))` }}
+/** One page on the canvas, with its name above and its estimated page breaks. */
+function Artboard({
+  id,
+  title,
+  left,
+  zoom,
+  dropLine,
+  onHeight,
+  children,
+}: {
+  id: string;
+  title: string;
+  left: number;
+  zoom: number;
+  dropLine: DropTarget["line"] | null;
+  onHeight: (id: string, height: number) => void;
+  children: React.ReactNode;
+}) {
+  const contentRef = useRef<HTMLDivElement>(null);
+  // Height of the document itself: the page drawn below is at least one A4 sheet
+  const [contentHeight, setContentHeight] = useState(0);
+  const latestOnHeight = useRef(onHeight);
+  useEffect(() => {
+    latestOnHeight.current = onHeight;
+  });
+
+  useEffect(() => {
+    const resize = new ResizeObserver(([entry]) => {
+      setContentHeight(entry.contentRect.height);
+      latestOnHeight.current(id, entry.contentRect.height);
+    });
+    resize.observe(contentRef.current!);
+    return () => resize.disconnect();
+  }, [id]);
+
+  const breaks = pageBreaks(contentHeight);
+
+  return (
+    <div className="absolute top-0" style={{ left, width: PAGE_WIDTH }}>
+      {/* Artboard name, kept at the same size on screen whatever the zoom */}
+      <div
+        className="absolute bottom-full left-0 flex items-center gap-2 whitespace-nowrap pb-2 text-[13px] text-gray-400"
+        style={{ transform: `scale(${1 / zoom})`, transformOrigin: "0 100%" }}
+      >
+        <span>{title}</span>
+        {breaks.length > 0 && (
+          <span className="rounded bg-amber-500/20 px-1.5 py-0.5 text-[11px] text-amber-300">
+            {breaks.length + 1} pages
+          </span>
+        )}
+      </div>
+
+      <div
+        data-artboard={id}
+        aria-label={title}
+        className="relative bg-white shadow-[0_2px_24px_rgba(0,0,0,0.5)]"
+        style={{ width: PAGE_WIDTH, minHeight: PAGE_HEIGHT }}
+      >
+        <div ref={contentRef}>{children}</div>
+        {dropLine && (
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute"
+            style={{
+              top: dropLine.top,
+              left: dropLine.left,
+              width: dropLine.width,
+              height: `calc(2px / var(--zoom))`,
+              marginTop: `calc(-1px / var(--zoom))`,
+              background: SELECTION_COLOR,
+            }}
+            data-testid="drop-line"
+          />
+        )}
+        {breaks.map((top, i) => (
+          <div
+            key={top}
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-x-0 border-t border-dashed border-red-400"
+            style={{ top, borderTopWidth: `calc(1px / var(--zoom))` }}
+          >
+            <span
+              className="absolute right-full mr-2 -translate-y-1/2 whitespace-nowrap text-red-300"
+              style={{ fontSize: `calc(11px / var(--zoom))` }}
             >
-              <span
-                className="absolute right-full mr-2 -translate-y-1/2 whitespace-nowrap text-red-300"
-                style={{ fontSize: `calc(11px / var(--zoom))` }}
-              >
-                ≈ page {i + 2}
-              </span>
-            </div>
-          ))}
-        </div>
+              ≈ page {i + 2}
+            </span>
+          </div>
+        ))}
       </div>
     </div>
   );
