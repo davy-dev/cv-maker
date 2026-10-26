@@ -10,7 +10,7 @@ const TEMPLATE_DEFAULTS: Record<string, { bg: string; text: string }> = {
   modern: { bg: "#0f172a", text: "#ffffff" },
   classic: { bg: "#ffffff", text: "#1a1a1a" },
   minimalist: { bg: "#ffffff", text: "#222222" },
-  elegant: { bg: "#0f172a", text: "#ffffff" },
+  elegant: { bg: "#1e293b", text: "#ffffff" },
   executive: { bg: "#000829", text: "#ffffff" },
 };
 

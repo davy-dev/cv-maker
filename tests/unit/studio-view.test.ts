@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { clampZoom, fitView, stepZoom, viewAtZoom, zoomAround } from "@/lib/studio/view";
-import { pageBreaks } from "@/components/cv/studio/canvas";
+import { pageBreaks } from "@/lib/cv/page";
 
 describe("vue du canevas", () => {
   it("zoome en gardant le point sous le pointeur en place", () => {

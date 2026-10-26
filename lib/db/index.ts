@@ -9,7 +9,13 @@ const dbPath =
   path.join(process.cwd(), "data", "cv-maker.db");
 const sqlite = new Database(dbPath);
 
-// Enable WAL mode for better concurrent read performance
-sqlite.pragma("journal_mode = WAL");
+// WAL lets reads run during a write. The mode is stored in the file, so it is set once; processes
+// opening a fresh database together (next build's workers) may find it locked by the one switching
+// it, and can go on: reads work in any mode.
+try {
+  if (sqlite.pragma("journal_mode", { simple: true }) !== "wal") sqlite.pragma("journal_mode = WAL");
+} catch (error) {
+  if (!(error instanceof Database.SqliteError && error.code === "SQLITE_BUSY")) throw error;
+}
 
 export const db = drizzle(sqlite, { schema });

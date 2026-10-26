@@ -125,4 +125,16 @@ describe("ExecutiveTemplate", () => {
     expect(screen.getByText("Anglais : professionnel")).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Vide" })).not.toBeInTheDocument();
   });
+
+  it("applique la variante, mais les couleurs choisies pour le bandeau l'emportent", () => {
+    const { container, rerender } = render(<ExecutiveTemplate data={buildCvData()} variant="elegant" />);
+    expect(container.firstElementChild).toHaveAttribute("data-variant", "elegant");
+    expect(container.querySelector("header")!.getAttribute("style") ?? "").not.toContain("background");
+
+    rerender(<ExecutiveTemplate data={buildCvData({ headerBgColor: "#123456", headerTextColor: "#fefefe" })} />);
+    expect(container.firstElementChild).toHaveAttribute("data-variant", "executive");
+    const style = container.querySelector("header")!.style;
+    expect(style.background).toBe("rgb(18, 52, 86)");
+    expect(style.getPropertyValue("--cv-header-title")).toBe("inherit");
+  });
 });

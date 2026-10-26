@@ -1,11 +1,36 @@
-/* A4 at 96 dpi: 794 × 1123 px. Fonts come from the page as --font-cv-sans / --font-cv-serif. */
+/*
+ * A4 at 96 dpi: 794 × 1123 px. Fonts come from the page as --font-cv-sans / --font-cv-serif.
+ * One structure, several looks: each variant (data-variant) only sets the variables below.
+ */
 .page {
+  --cv-sans: var(--font-cv-sans), "Source Sans 3", sans-serif;
+  --cv-serif: var(--font-cv-serif), "Source Serif 4", serif;
+  --cv-body-font: var(--cv-sans);
+  --cv-name-font: var(--cv-serif);
+  --cv-name-size: 34px;
+  --cv-heading-font: var(--cv-sans);
+  --cv-text: #1b2430;
+  --cv-muted: #4a5868;
+  --cv-header-bg: linear-gradient(90deg, #110040cf 0%, #000829 91%);
+  --cv-header-text: #ffffff;
+  --cv-header-title: #dce7f5;
+  --cv-header-subtle: #c9d6e8;
+  --cv-header-border: none;
+  --cv-heading-color: #1f3a5f;
+  --cv-heading-size: 12.5px;
+  --cv-heading-transform: uppercase;
+  --cv-heading-spacing: 1.4px;
+  --cv-rule: 1.5px solid #c9d6e8;
+  --cv-marker: #2f6fb0;
+  --cv-photo-border: #ffffff;
+  --cv-column-gap: 11px;
+
   width: 794px;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  font-family: var(--font-cv-sans), "Source Sans 3", sans-serif;
-  color: #1b2430;
+  font-family: var(--cv-body-font);
+  color: var(--cv-text);
   font-size: 12px;
   line-height: 1.42;
   background: #ffffff;
@@ -23,6 +48,9 @@
   display: flex;
   align-items: center;
   gap: 24px;
+  background: var(--cv-header-bg);
+  color: var(--cv-header-text);
+  border-bottom: var(--cv-header-border);
 }
 
 .headerBgImage {
@@ -47,7 +75,7 @@
   height: 104px;
   border-radius: 50%;
   object-fit: cover;
-  border: 3px solid #ffffff;
+  border: 3px solid var(--cv-photo-border);
   flex-shrink: 0;
 }
 
@@ -56,16 +84,16 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(255, 255, 255, 0.12);
-  font-family: var(--font-cv-serif), "Source Serif 4", serif;
+  background: color-mix(in srgb, currentColor 12%, transparent);
+  font-family: var(--cv-name-font);
   font-size: 40px;
   font-weight: 700;
 }
 
 .name {
   margin: 0;
-  font-family: var(--font-cv-serif), "Source Serif 4", serif;
-  font-size: 34px;
+  font-family: var(--cv-name-font);
+  font-size: var(--cv-name-size);
   line-height: 1.05;
   font-weight: 700;
   letter-spacing: 0.2px;
@@ -74,12 +102,12 @@
 .title {
   font-size: 17px;
   font-weight: 600;
-  opacity: 0.9;
+  color: var(--cv-header-title);
 }
 
 .subtitle {
   font-size: 12.5px;
-  opacity: 0.8;
+  color: var(--cv-header-subtle);
 }
 
 .contacts {
@@ -113,7 +141,7 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 11px;
+  gap: var(--cv-column-gap);
 }
 
 .aside {
@@ -121,17 +149,18 @@
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: calc(var(--cv-column-gap) + 3px);
 }
 
 .sectionTitle {
   margin: 0 0 6px;
-  font-size: 12.5px;
+  font-family: var(--cv-heading-font);
+  font-size: var(--cv-heading-size);
   font-weight: 700;
-  letter-spacing: 1.4px;
-  text-transform: uppercase;
-  color: #1f3a5f;
-  border-bottom: 1.5px solid #c9d6e8;
+  letter-spacing: var(--cv-heading-spacing);
+  text-transform: var(--cv-heading-transform);
+  color: var(--cv-heading-color);
+  border-bottom: var(--cv-rule);
   padding-bottom: 3px;
   break-after: avoid;
 }
@@ -164,13 +193,13 @@
 
 .itemMeta {
   font-size: 11.5px;
-  color: #4a5868;
+  color: var(--cv-muted);
   white-space: nowrap;
 }
 
 .itemNote {
   font-size: 11.5px;
-  color: #4a5868;
+  color: var(--cv-muted);
   font-style: italic;
 }
 
@@ -186,7 +215,7 @@
 }
 
 .bullets li::marker {
-  color: #2f6fb0;
+  color: var(--cv-marker);
 }
 
 .line {
@@ -207,6 +236,11 @@
   gap: 7px;
 }
 
+/* The stack's gap already spaces its entries */
+.stack > .item + .item {
+  margin-top: 0;
+}
+
 .stackLoose {
   composes: stack;
   gap: 8px;
@@ -217,5 +251,100 @@
 }
 
 .muted {
-  color: #4a5868;
+  color: var(--cv-muted);
+}
+
+/* --- Variants --- */
+
+/* Navy band, all sans-serif, bright blue accents */
+.page[data-variant="modern"] {
+  --cv-name-font: var(--cv-sans);
+  --cv-name-size: 32px;
+  --cv-header-bg: #0f172a;
+  --cv-header-title: #93c5fd;
+  --cv-header-subtle: #cbd5e1;
+  --cv-heading-color: #1e3a5f;
+  --cv-rule: 2px solid #2563eb;
+  --cv-marker: #2563eb;
+  --cv-text: #1f2937;
+  --cv-muted: #6b7280;
+}
+
+/* White heading centred over a black rule, serif throughout */
+.page[data-variant="classic"] {
+  --cv-body-font: var(--cv-serif);
+  --cv-heading-font: var(--cv-serif);
+  --cv-name-size: 30px;
+  --cv-text: #1a1a1a;
+  --cv-muted: #4b5563;
+  --cv-header-bg: #ffffff;
+  --cv-header-text: #1a1a1a;
+  --cv-header-title: #374151;
+  --cv-header-subtle: #4b5563;
+  --cv-header-border: 2px solid #1a1a1a;
+  --cv-heading-color: #1a1a1a;
+  --cv-heading-size: 13px;
+  --cv-heading-spacing: 1px;
+  --cv-rule: 1px solid #1a1a1a;
+  --cv-marker: #1a1a1a;
+  --cv-photo-border: #e5e7eb;
+}
+
+.page[data-variant="classic"] .header {
+  margin: 0 40px;
+  padding: 32px 0 20px;
+  justify-content: center;
+  text-align: center;
+}
+
+.page[data-variant="classic"] .headerContent {
+  align-items: center;
+}
+
+.page[data-variant="classic"] .contacts {
+  justify-content: center;
+}
+
+/* No colour, no band, plenty of air and quiet grey headings */
+.page[data-variant="minimalist"] {
+  --cv-name-font: var(--cv-sans);
+  --cv-name-size: 30px;
+  --cv-text: #222222;
+  --cv-muted: #6b7280;
+  --cv-header-bg: #ffffff;
+  --cv-header-text: #222222;
+  --cv-header-title: #4b5563;
+  --cv-header-subtle: #6b7280;
+  /* Grey, but dark enough to read at this size (4.8:1) */
+  --cv-heading-color: #6b7280;
+  --cv-heading-size: 10.5px;
+  --cv-heading-spacing: 2px;
+  --cv-rule: none;
+  --cv-marker: #9ca3af;
+  --cv-photo-border: #f3f4f6;
+  --cv-column-gap: 16px;
+}
+
+.page[data-variant="minimalist"] .header {
+  padding: 40px 40px 16px;
+}
+
+.page[data-variant="minimalist"] .name {
+  font-weight: 600;
+  letter-spacing: -0.3px;
+}
+
+/* Dark slate band, serif headings, gold accents */
+.page[data-variant="elegant"] {
+  --cv-heading-font: var(--cv-serif);
+  --cv-header-bg: #1e293b;
+  --cv-header-title: #e4c97e;
+  --cv-header-subtle: #cbd5e1;
+  --cv-heading-color: #1e293b;
+  --cv-heading-size: 15px;
+  --cv-heading-transform: none;
+  --cv-heading-spacing: 0.2px;
+  --cv-rule: 1px solid #c9a54c;
+  --cv-marker: #b08d3e;
+  --cv-photo-border: #e4c97e;
 }

@@ -120,7 +120,8 @@ export interface CvData {
   layout?: CvLayout;
 }
 
-export type TemplateId = "modern" | "classic" | "minimalist" | "elegant";
+/** The CV's look: see lib/cv/variants.ts */
+export type TemplateId = import("@/lib/cv/variants").VariantId;
 
 export type CvStatus = "draft" | "final";
 

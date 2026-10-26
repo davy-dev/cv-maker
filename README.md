@@ -7,8 +7,8 @@ Every sentence Claude writes must cite facts from the candidate's profile, and i
 rules and a second model pass before it reaches the CV. Sentences that fail are left out and shown to the
 user, along with the skills the offer asks for that the candidate does not have yet.
 
-Built with Next.js 16 (App Router, React 19), the Anthropic SDK with structured outputs, Drizzle + SQLite
-and `@react-pdf/renderer`.
+Built with Next.js 16 (App Router, React 19), the Anthropic SDK with structured outputs, Drizzle + SQLite,
+HTML templates printed to PDF by Chrome.
 
 ![CV editor: fact verification report, skills to acquire and live PDF preview](docs/screenshot.png)
 
@@ -26,7 +26,7 @@ flowchart LR
     V -- supported --> CV[Assembled CV]
     V -- unsupported --> X
     X --> REP[Generation report<br/>shown in the editor]
-    CV --> E[Editor + live PDF preview]
+    CV --> E[Studio: the CV on a canvas]
 ```
 
 1. **Job analysis** ([`app/api/ai/analyze`](app/api/ai/analyze/route.ts)): Claude reads the offer, the
@@ -57,8 +57,10 @@ flowchart LR
 - Job offer analysis with match score and skill gaps
 - Grounded CV generation with source citations and verification (above)
 - Cover letter generation from the same analysis
-- Editor with a live preview rendered by the PDF engine itself, so preview and download are identical
-- 4 PDF templates (Modern, Classic, Elegant, Minimalist), one-page layout for side projects
+- Studio, a Figma-like editor: the CV and its letter on a canvas, text edited in place, sections and
+  entries reordered by dragging, layers, inspector, undo
+- One HTML template in 5 styles (Executive, Modern, Classic, Minimalist, Elegant), printed to PDF by
+  Chrome from the same HTML, so what is shown is what is downloaded
 - Profile, experiences, projects and skills management, photo upload
 - Credentials, GitHub and Google sign-in (NextAuth v5)
 
@@ -70,7 +72,7 @@ flowchart LR
 | AI         | Anthropic SDK, structured outputs validated with Zod       |
 | Data       | SQLite (better-sqlite3) + Drizzle ORM, SQL migrations      |
 | Auth       | NextAuth v5                                                |
-| PDF        | @react-pdf/renderer, pdf.js for the in-browser preview     |
+| PDF        | HTML templates printed by Chrome (playwright-core)         |
 | UI         | Tailwind CSS v4, React Hook Form                           |
 | Tests      | Vitest, Testing Library, Playwright                        |
 
@@ -87,6 +89,9 @@ npm run dev                    # http://localhost:3000
 ```
 
 GitHub and Google sign-in are optional; email + password works without them.
+
+PDFs are printed by the installed Google Chrome. Without it, run `npx playwright install chromium` and set
+`PDF_BROWSER_CHANNEL=""` in `.env.local`.
 
 Then: create an account, fill in your profile and skills, open **Nouveau CV**, paste a job offer and
 generate.
@@ -112,8 +117,8 @@ generate.
 
 ```
 app/                  routes: (auth), (dashboard), api/ai, api/scrape, api/upload
-components/cv/        editor, live PDF preview, generation report
-components/pdf/       PDF templates and renderer
+components/cv/        studio (canvas, layers, inspector), classic editor, HTML templates, generation report
+lib/cv/               CV reducer, layout, fields, undo history, print to PDF
 lib/ai/               facts, schemas, prompts, generation, verification, CV assembly
 lib/db/               Drizzle schema and migrations
 lib/scraper/          company page scraping with SSRF protection

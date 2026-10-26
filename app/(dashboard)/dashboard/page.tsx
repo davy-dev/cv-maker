@@ -106,7 +106,7 @@ export default async function DashboardPage() {
               {recentCvs.map((cv) => (
                 <Link
                   key={cv.id}
-                  href={`/cv/${cv.id}`}
+                  href={`/cv/${cv.id}/studio`}
                   className="flex items-center justify-between rounded-lg border border-gray-200 p-4 hover:bg-gray-50 transition-colors"
                 >
                   <div>

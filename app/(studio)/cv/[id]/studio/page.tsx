@@ -26,6 +26,7 @@ export default async function CvStudioPage({ params }: PageProps<"/cv/[id]/studi
         title={cv.title}
         initialData={cv.cvData}
         initialLetter={cv.coverLetterData}
+        initialVariant={cv.templateId}
         generationReport={cv.generationReport}
       />
     </div>

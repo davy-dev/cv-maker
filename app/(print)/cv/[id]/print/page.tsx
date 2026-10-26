@@ -32,9 +32,9 @@ export default async function CvPrintPage({ params, searchParams }: PageProps<"/
     <div className={cvFontVariables}>
       <style>{PRINT_CSS}</style>
       {doc === "letter" ? (
-        <ExecutiveLetter cv={cv.cvData} letter={cv.coverLetterData!} />
+        <ExecutiveLetter cv={cv.cvData} letter={cv.coverLetterData!} variant={cv.templateId} />
       ) : (
-        <ExecutiveTemplate data={applyVisibility(cv.cvData)} />
+        <ExecutiveTemplate data={applyVisibility(cv.cvData)} variant={cv.templateId} />
       )}
     </div>
   );

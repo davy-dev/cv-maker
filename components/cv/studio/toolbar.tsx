@@ -40,9 +40,9 @@ export function Toolbar(props: ToolbarProps) {
     <header className="flex h-12 shrink-0 items-center justify-between gap-4 border-b border-black bg-[#2c2c2c] px-3 text-gray-200">
       <div className="flex min-w-0 items-center gap-3">
         <Link
-          href={`/cv/${props.cvId}`}
-          aria-label="Retour à l'éditeur classique"
-          title="Retour à l'éditeur classique"
+          href="/cv"
+          aria-label="Retour à mes CV"
+          title="Retour à mes CV"
           className="flex h-8 w-8 items-center justify-center rounded hover:bg-white/10"
         >
           <ArrowLeftIcon />
@@ -64,6 +64,9 @@ export function Toolbar(props: ToolbarProps) {
           </ToolButton>
         </div>
         <h1 className="truncate text-sm text-gray-300">{props.title}</h1>
+        <Link href={`/cv/${props.cvId}`} className="shrink-0 text-xs text-gray-400 underline-offset-2 hover:text-gray-200 hover:underline">
+          Éditeur classique
+        </Link>
       </div>
 
       <div className="flex shrink-0 items-center gap-3">

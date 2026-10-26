@@ -1,15 +1,17 @@
 "use client";
 
-import { useReducer, useCallback, useRef, useEffect, useState } from "react";
+import { useReducer, useCallback, useState } from "react";
 import { saveCoverLetterData } from "@/lib/actions/cover-letter";
+import { useAutosave } from "@/hooks/use-cv-autosave";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { CoverLetterPreview } from "@/components/cover-letter/cover-letter-preview";
-import { CoverLetterPdfDownloadButton } from "@/components/pdf/cover-letter-pdf-download-button";
+import { PdfDownloadButton } from "@/components/cv/pdf-download-button";
+import { ExecutiveLetter } from "@/components/cv/templates-html/executive-letter";
+import { ScaledPage } from "@/components/cv/templates-html/scaled-page";
 import { coverLetterReducer, emptyCoverLetterData, type LetterAction as CoverLetterAction } from "@/lib/cv/letter";
-import type { CoverLetterData, TemplateId } from "@/types/cv";
+import type { CoverLetterData, CvData, TemplateId } from "@/types/cv";
 
 // --- Helpers ---
 
@@ -23,12 +25,15 @@ interface CoverLetterEditorProps {
   cvId: string;
   initialData: CoverLetterData | null;
   templateId: TemplateId;
+  /** The CV whose banner (name, contacts, colours) heads the letter */
+  cvData: CvData;
 }
 
 export function CoverLetterEditor({
   cvId,
   initialData,
   templateId,
+  cvData,
 }: CoverLetterEditorProps) {
   const [data, dispatch] = useReducer(
     coverLetterReducer,
@@ -37,30 +42,13 @@ export function CoverLetterEditor({
   const [hasData, setHasData] = useState(initialData !== null);
   const [isGenerating, setIsGenerating] = useState(false);
 
-  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // Debounced auto-save
-  const scheduleAutoSave = useCallback(
-    (coverLetterData: CoverLetterData) => {
-      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-      saveTimeoutRef.current = setTimeout(() => {
-        saveCoverLetterData(cvId, coverLetterData);
-      }, 1000);
-    },
-    [cvId]
-  );
+  // Nothing to save until the letter is generated
+  const { flush } = useAutosave(hasData ? data : null, (snapshot) => saveCoverLetterData(cvId, snapshot));
 
   // Dispatch wrapper
   const update = useCallback((action: CoverLetterAction) => {
     dispatch(action);
   }, []);
-
-  // Auto-save whenever data changes (only when editor is active)
-  useEffect(() => {
-    if (hasData) {
-      scheduleAutoSave(data);
-    }
-  }, [data, hasData, scheduleAutoSave]);
 
   // --- Generate handler ---
 
@@ -114,11 +102,7 @@ export function CoverLetterEditor({
       {/* Toolbar */}
       <div className="flex items-center justify-between border-b border-gray-200 bg-white px-4 py-3">
         <span className="text-xs text-gray-400">Auto-save activé</span>
-        <CoverLetterPdfDownloadButton
-          data={data}
-          templateId={templateId}
-          fileName="lettre_de_motivation"
-        />
+        <PdfDownloadButton cvId={cvId} doc="letter" name={cvData.header.name} beforeDownload={flush} />
       </div>
 
       {/* Split view */}
@@ -357,7 +341,9 @@ export function CoverLetterEditor({
 
         {/* Right: Preview */}
         <div className="w-1/2 overflow-auto bg-gray-100 p-4">
-          <CoverLetterPreview data={data} templateId={templateId} />
+          <ScaledPage>
+            <ExecutiveLetter cv={cvData} letter={data} variant={templateId} />
+          </ScaledPage>
         </div>
       </div>
     </div>

@@ -8,13 +8,15 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Select } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { PdfDownloadButton } from "@/components/pdf/pdf-download-button";
+import { ExecutiveTemplate } from "@/components/cv/templates-html/executive-template";
+import { ScaledPage } from "@/components/cv/templates-html/scaled-page";
 import { useCvAutosave, type AutosaveStatus } from "@/hooks/use-cv-autosave";
 import { cvReducer } from "@/lib/cv/reducer";
+import { VARIANTS } from "@/lib/cv/variants";
 import { cn } from "@/lib/utils";
-import { MAX_SECTION_PROJECTS, isInProjectsSection } from "@/lib/cv/visibility";
+import { MAX_SECTION_PROJECTS, applyVisibility, isInProjectsSection } from "@/lib/cv/visibility";
 import type { CvData, CvSection, GenerationReport, TemplateId } from "@/types/cv";
-import { CvPdfPreview } from "./cv-pdf-preview";
+import { PdfDownloadButton } from "./pdf-download-button";
 import { GenerationReportPanel } from "./generation-report";
 import { BannerAppearanceFields } from "./editor/banner-appearance-fields";
 import { CustomSectionFields } from "./editor/custom-section-fields";
@@ -67,12 +69,7 @@ export function CvEditor({ cvId, initialData, initialTemplateId, generationRepor
       <div className="flex items-center justify-between border-b border-gray-200 bg-white px-4 py-3">
         <div className="flex items-center gap-3">
           <Select
-            options={[
-              { value: "modern", label: "Moderne" },
-              { value: "classic", label: "Classique" },
-              { value: "minimalist", label: "Minimaliste" },
-              { value: "elegant", label: "Elegant" },
-            ]}
+            options={VARIANTS.map((v) => ({ value: v.id, label: v.label }))}
             value={templateId}
             onChange={(e) => setTemplateId(e.target.value as TemplateId)}
           />
@@ -85,18 +82,13 @@ export function CvEditor({ cvId, initialData, initialTemplateId, generationRepor
         </div>
         <div className="flex items-center gap-2">
           <Link href={`/cv/${cvId}/studio`} className="text-sm font-medium text-blue-600 hover:underline">
-            Studio (bêta)
+            Ouvrir le studio
           </Link>
           <Button variant="outline" onClick={openDownloadPage}>
             CV + lettre
           </Button>
-          {/* Same renderer as the preview: downloads exactly what is shown */}
-          <PdfDownloadButton
-            data={cvData}
-            templateId={templateId}
-            fileName={`CV_${cvData.header.name || "sans_nom"}`.replace(/[^a-zA-Z0-9]/g, "_")}
-            size="default"
-          />
+          {/* Printed from the same HTML as the preview: downloads exactly what is shown */}
+          <PdfDownloadButton cvId={cvId} name={cvData.header.name} beforeDownload={flush} size="default" />
         </div>
       </div>
 
@@ -191,7 +183,7 @@ export function CvEditor({ cvId, initialData, initialTemplateId, generationRepor
             <p className={`text-xs ${sectionProjectsShown > MAX_SECTION_PROJECTS ? "text-amber-700" : "text-gray-500"}`}>
               {sectionProjectsShown > MAX_SECTION_PROJECTS
                 ? `Seuls les ${MAX_SECTION_PROJECTS} premiers projets du bloc Projets apparaissent sur le CV : masquez-en un ou placez-le sous une expérience.`
-                : `Le bloc Projets affiche ${MAX_SECTION_PROJECTS} projets au maximum, côte à côte en bas de page.`}
+                : `Le bloc Projets affiche ${MAX_SECTION_PROJECTS} projets au maximum.`}
             </p>
             {cvData.projects.map((project, index) => (
               <ItemBlock key={project.id} hidden={project.hidden} className="space-y-3">
@@ -282,7 +274,9 @@ export function CvEditor({ cvId, initialData, initialTemplateId, generationRepor
         {/* Right: Preview */}
         <div className="w-1/2 overflow-auto bg-gray-100 p-4">
           <div className="mx-auto" style={{ maxWidth: "595px" }}>
-            <CvPdfPreview data={cvData} templateId={templateId} />
+            <ScaledPage>
+              <ExecutiveTemplate data={applyVisibility(cvData)} variant={templateId} />
+            </ScaledPage>
           </div>
         </div>
       </div>

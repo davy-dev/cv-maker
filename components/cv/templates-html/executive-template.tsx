@@ -1,15 +1,14 @@
 import type { CvField } from "@/lib/cv/fields";
 import { parseCustomSectionId, resolveLayout } from "@/lib/cv/layout";
 import { selectionKey } from "@/lib/cv/selection";
-import type { CvData, CvProject, SectionId } from "@/types/cv";
+import type { CvData, CvProject, SectionId, TemplateId } from "@/types/cv";
 import { Editable, WhenFilled } from "./editable";
 import styles from "./executive-template.module.css";
 
-const DEFAULT_HEADER_BG = "linear-gradient(90deg, #110040cf 0%, #000829 91%)";
-const DEFAULT_HEADER_TEXT = "#ffffff";
-
 interface TemplateProps {
   data: CvData;
+  /** The look: executive, or a variant of it (colours, fonts, header style) */
+  variant?: TemplateId;
   /**
    * In the studio: text can be edited in place, and empty slots stay on the
    * page (with a placeholder) so they can be filled.
@@ -22,11 +21,11 @@ interface TemplateProps {
  * so the page shown is exactly the file downloaded.
  * Expects data already passed through applyVisibility().
  */
-export function ExecutiveTemplate({ data, editable = false }: TemplateProps) {
+export function ExecutiveTemplate({ data, variant = "executive", editable = false }: TemplateProps) {
   const layout = resolveLayout(data);
 
   return (
-    <div className={styles.page}>
+    <div className={styles.page} data-variant={variant}>
       <ExecutiveHeader data={data} editable={editable} />
 
       <div className={styles.body}>
@@ -55,9 +54,14 @@ export function ExecutiveHeader({ data, editable = false }: TemplateProps) {
     <header
       data-select="header"
       className={styles.header}
+      // The user's own colours win over the variant's
       style={{
-        background: data.headerBgColor || DEFAULT_HEADER_BG,
-        color: data.headerTextColor || DEFAULT_HEADER_TEXT,
+        ...(data.headerBgColor && { background: data.headerBgColor }),
+        ...(data.headerTextColor && {
+          color: data.headerTextColor,
+          ["--cv-header-title" as string]: "inherit",
+          ["--cv-header-subtle" as string]: "inherit",
+        }),
       }}
     >
       {data.headerBgImage && (

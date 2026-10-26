@@ -17,7 +17,9 @@ import { parseCustomSectionId } from "@/lib/cv/layout";
 import type { CvDispatch } from "@/lib/cv/reducer";
 import { sectionTitle, type ItemSection, type Selection } from "@/lib/cv/selection";
 import type { LetterAction } from "@/lib/cv/letter";
-import type { CoverLetterData, CvData, GenerationReport, SectionId } from "@/types/cv";
+import type { CoverLetterData, CvData, GenerationReport, SectionId, TemplateId } from "@/types/cv";
+import { VARIANTS } from "@/lib/cv/variants";
+import { cn } from "@/lib/utils";
 import { ArrowLeftIcon } from "./icons";
 import { sectionVisibility } from "./layers-panel";
 
@@ -29,6 +31,8 @@ interface InspectorProps {
   onSelect: (selection: Selection) => void;
   dispatch: CvDispatch;
   generationReport: GenerationReport | null;
+  variant: TemplateId;
+  onVariantChange: (variant: TemplateId) => void;
   /** Adds an empty entry and selects it */
   onAddEntry: (section: "experience" | "education" | "projects") => void;
 }
@@ -74,15 +78,39 @@ function Title({ children, back }: { children: React.ReactNode; back?: { label: 
   );
 }
 
-function DocumentInspector({ data, dispatch, generationReport }: InspectorProps) {
+function DocumentInspector({ data, dispatch, generationReport, variant, onVariantChange }: InspectorProps) {
   return (
     <>
       <Title>Document</Title>
-      <p className="text-xs text-gray-500">
-        Modèle Executive. Cliquez sur un élément du CV ou d&apos;un calque pour le modifier.
-      </p>
+      <p className="text-xs text-gray-500">Cliquez sur un élément du CV ou d&apos;un calque pour le modifier.</p>
+
+      <h3 className="pt-2 text-xs font-semibold uppercase tracking-wide text-gray-500">Style</h3>
+      <div role="radiogroup" aria-label="Style du CV" className="grid grid-cols-2 gap-2">
+        {VARIANTS.map((v) => (
+          <button
+            key={v.id}
+            type="button"
+            role="radio"
+            aria-checked={variant === v.id}
+            title={v.description}
+            onClick={() => onVariantChange(v.id)}
+            className={cn(
+              "overflow-hidden rounded-md border text-left text-xs",
+              variant === v.id ? "border-[#0d99ff] ring-2 ring-[#0d99ff]/30" : "border-gray-200 hover:border-gray-400"
+            )}
+          >
+            {/* A tiny page: the band, then a heading rule in the accent colour */}
+            <span className="block h-5 border-b border-gray-200" style={{ background: v.swatch.band }} />
+            <span className="block px-2 pt-1.5">
+              <span className="block h-0.5 w-8" style={{ background: v.swatch.accent }} />
+            </span>
+            <span className="block px-2 pb-1.5 pt-1 font-medium text-gray-800">{v.label}</span>
+          </button>
+        ))}
+      </div>
+
       <h3 className="pt-2 text-xs font-semibold uppercase tracking-wide text-gray-500">Bandeau</h3>
-      <BannerAppearanceFields data={data} templateId="executive" dispatch={dispatch} />
+      <BannerAppearanceFields data={data} templateId={variant} dispatch={dispatch} />
       {generationReport && <GenerationReportPanel report={generationReport} />}
     </>
   );

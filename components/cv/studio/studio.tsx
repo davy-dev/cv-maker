@@ -24,8 +24,11 @@ import { resolveSelection, selectionKey, type Selection } from "@/lib/cv/selecti
 import { applyVisibility } from "@/lib/cv/visibility";
 import { studioHistoryReducer } from "@/lib/studio/document";
 import { fitView, stepZoom, viewAtZoom, zoomAround, type Size, type View } from "@/lib/studio/view";
-import type { CoverLetterData, CvData, GenerationReport } from "@/types/cv";
-import { Canvas, PAGE_WIDTH, type Tool } from "./canvas";
+import { updateCvTemplate } from "@/lib/actions/cv";
+import { downloadPdf, type PrintedDocument } from "@/lib/cv/download";
+import type { CoverLetterData, CvData, GenerationReport, TemplateId } from "@/types/cv";
+import { PAGE_WIDTH } from "@/lib/cv/page";
+import { Canvas, type Tool } from "./canvas";
 import { Inspector } from "./inspector";
 import { LayersPanel } from "./layers-panel";
 import { Toolbar } from "./toolbar";
@@ -35,10 +38,11 @@ interface StudioProps {
   title: string;
   initialData: CvData;
   initialLetter: CoverLetterData | null;
+  initialVariant: TemplateId;
   generationReport: GenerationReport | null;
 }
 
-type DocumentKind = "cv" | "letter";
+type DocumentKind = PrintedDocument;
 
 /** The status shown for both documents: the most pressing of the two. */
 function combinedStatus(a: AutosaveStatus, b: AutosaveStatus): AutosaveStatus {
@@ -64,7 +68,13 @@ const ARROW_DIRECTIONS: Record<string, Direction> = {
 };
 
 /** The Figma-like CV editor: layers, the CV and its letter on a canvas, and an inspector. */
-export function Studio({ cvId, title, initialData, initialLetter, generationReport }: StudioProps) {
+export function Studio({ cvId, title, initialData, initialLetter, initialVariant, generationReport }: StudioProps) {
+  // The look is a setting of the CV, saved at once and outside the undo history
+  const [variant, setVariantState] = useState(initialVariant);
+  const setVariant = (next: TemplateId) => {
+    setVariantState(next);
+    updateCvTemplate(cvId, next);
+  };
   const [history, dispatchHistory] = useReducer(
     studioHistoryReducer,
     { cv: initialData, letter: initialLetter },
@@ -208,15 +218,7 @@ export function Studio({ cvId, title, initialData, initialLetter, generationRepo
     setDownloading(doc);
     try {
       await (doc === "cv" ? cvSave.flush() : letterSave.flush());
-      const response = await fetch(`/api/cv/${cvId}/pdf${doc === "letter" ? "?doc=letter" : ""}`);
-      if (!response.ok) throw new Error(`PDF: ${response.status}`);
-      const url = URL.createObjectURL(await response.blob());
-      const link = document.createElement("a");
-      link.href = url;
-      const prefix = doc === "letter" ? "Lettre" : "CV";
-      link.download = `${prefix}_${data.header.name || "sans_nom"}`.replace(/[^a-zA-Z0-9]/g, "_") + ".pdf";
-      link.click();
-      URL.revokeObjectURL(url);
+      await downloadPdf(cvId, doc, data.header.name);
     } catch (error) {
       console.error("PDF download failed:", error);
       alert("La génération du PDF a échoué");
@@ -292,12 +294,12 @@ export function Studio({ cvId, title, initialData, initialLetter, generationRepo
     return {
       cv: (
         <EditingContext value={api}>
-          <ExecutiveTemplate data={applyVisibility(data)} editable />
+          <ExecutiveTemplate data={applyVisibility(data)} variant={variant} editable />
         </EditingContext>
       ),
       letter: letter ? (
         <EditingContext value={api}>
-          <ExecutiveLetter cv={data} letter={letter} editable />
+          <ExecutiveLetter cv={data} letter={letter} variant={variant} editable />
         </EditingContext>
       ) : (
         <LetterPlaceholder generating={generatingLetter} onGenerate={generateLetter} />
@@ -305,7 +307,7 @@ export function Studio({ cvId, title, initialData, initialLetter, generationRepo
     };
     // generateLetter only changes with the CV id and the dispatchers, already covered
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data, letter, editing, dispatch, dispatchLetter, generatingLetter]);
+  }, [data, letter, variant, editing, dispatch, dispatchLetter, generatingLetter]);
 
   return (
     <>
@@ -373,6 +375,8 @@ export function Studio({ cvId, title, initialData, initialLetter, generationRepo
           onSelect={setSelection}
           dispatch={dispatch}
           generationReport={generationReport}
+          variant={variant}
+          onVariantChange={setVariant}
           onAddEntry={(section) => {
             const id = crypto.randomUUID();
             const type = { experience: "ADD_EXPERIENCE", education: "ADD_EDUCATION", projects: "ADD_PROJECT" } as const;

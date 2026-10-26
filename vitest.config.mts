@@ -30,7 +30,7 @@ export default defineConfig({
       provider: "v8",
       reporter: ["text", "html", "lcov", "json-summary"],
       include: ["lib/**/*.ts", "hooks/**/*.ts", "components/**/*.tsx", "app/api/**/*.ts", "proxy.ts"],
-      exclude: ["lib/db/migrations/**", "components/pdf/templates/**", "components/pdf/icons.tsx"],
+      exclude: ["lib/db/migrations/**"],
       // Floors, not goals: raise them as coverage grows so it never goes back down.
       thresholds: {
         lines: 40,

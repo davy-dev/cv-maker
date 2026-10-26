@@ -1,5 +1,5 @@
 import type { LetterField, LetterTextField } from "@/lib/cv/letter";
-import type { CoverLetterData, CoverLetterRecipient, CvData } from "@/types/cv";
+import type { CoverLetterData, CoverLetterRecipient, CvData, TemplateId } from "@/types/cv";
 import { Editable } from "./editable";
 import { ExecutiveHeader } from "./executive-template";
 import page from "./executive-template.module.css";
@@ -15,10 +15,13 @@ const RECIPIENT_LINES: (keyof CoverLetterRecipient)[] = ["contactName", "contact
 export function ExecutiveLetter({
   cv,
   letter,
+  variant = "executive",
   editable = false,
 }: {
   cv: CvData;
   letter: CoverLetterData;
+  /** Same look as the CV */
+  variant?: TemplateId;
   editable?: boolean;
 }) {
   const text = (field: LetterTextField, placeholder?: string, rich = false) => (
@@ -31,7 +34,7 @@ export function ExecutiveLetter({
   );
 
   return (
-    <div className={page.page} data-select="letter">
+    <div className={page.page} data-variant={variant} data-select="letter">
       <ExecutiveHeader data={cv} editable={false} />
       <div className={styles.body}>
         <address className={styles.recipient} style={{ fontStyle: "normal" }}>

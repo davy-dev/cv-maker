@@ -20,12 +20,12 @@
 
 .dateLine {
   align-self: flex-end;
-  color: #4a5868;
+  color: var(--cv-muted);
 }
 
 .subject {
   font-weight: 700;
-  color: #1f3a5f;
+  color: var(--cv-heading-color);
   margin: 8px 0 4px;
 }
 
@@ -38,7 +38,7 @@
 .signature {
   margin-top: 20px;
   align-self: flex-end;
-  font-family: var(--font-cv-serif), "Source Serif 4", serif;
+  font-family: var(--cv-name-font);
   font-size: 15px;
   font-weight: 700;
 }

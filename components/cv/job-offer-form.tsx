@@ -8,14 +8,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { DEFAULT_VARIANT, VARIANTS } from "@/lib/cv/variants";
 import type { JobAnalysis } from "@/types/job";
 
-const TEMPLATES = [
-  { value: "modern", label: "Moderne" },
-  { value: "classic", label: "Classique" },
-  { value: "minimalist", label: "Minimaliste" },
-  { value: "elegant", label: "Elegant" },
-];
+const TEMPLATES = VARIANTS.map((v) => ({ value: v.id, label: v.label }));
 
 export function JobOfferForm() {
   const router = useRouter();
@@ -27,7 +23,7 @@ export function JobOfferForm() {
   const [error, setError] = useState("");
   const [cvId, setCvId] = useState("");
   const [analysis, setAnalysis] = useState<JobAnalysis | null>(null);
-  const [templateId, setTemplateId] = useState("modern");
+  const [templateId, setTemplateId] = useState<string>(DEFAULT_VARIANT);
 
   async function handleAnalyze(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -75,7 +71,7 @@ export function JobOfferForm() {
       return;
     }
 
-    router.push(`/cv/${cvId}`);
+    router.push(`/cv/${cvId}/studio`);
   }
 
   if (step === "analysis" && analysis) {
@@ -203,7 +199,7 @@ export function JobOfferForm() {
             <div className="flex items-end gap-4">
               <div className="flex-1">
                 <Select
-                  label="Template"
+                  label="Style"
                   options={TEMPLATES}
                   value={templateId}
                   onChange={(e) => setTemplateId(e.target.value)}

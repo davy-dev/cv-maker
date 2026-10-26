@@ -4,15 +4,11 @@ import { useEffect, useRef, useState } from "react";
 import { parseFieldKey, type EditableField } from "@/lib/cv/fields";
 import type { CvAction } from "@/lib/cv/reducer";
 import { parseSelectionKey, type Selection } from "@/lib/cv/selection";
+import { PAGE_HEIGHT, PAGE_WIDTH, pageBreaks } from "@/lib/cv/page";
 import { zoomAround, type Size, type View } from "@/lib/studio/view";
 import { findDragSource, findDropTarget, type DragSource, type DropTarget } from "./drag";
 
 export type Tool = "select" | "hand";
-
-/** A4 at 96 dpi, and the print margins of later pages (12mm, see the print page). */
-export const PAGE_WIDTH = 794;
-const PAGE_HEIGHT = 1123;
-const PRINT_MARGIN = 45;
 
 /** Space between artboards on the canvas */
 export const ARTBOARD_GAP = 80;
@@ -20,20 +16,6 @@ export const ARTBOARD_GAP = 80;
 const SELECTION_COLOR = "#0d99ff";
 /** Screen pixels the pointer must travel before a press becomes a drag */
 const DRAG_THRESHOLD = 4;
-
-/**
- * Where pages roughly break when printed: the first page keeps a bottom margin,
- * later ones a margin on both sides. Approximate: blocks are never split.
- */
-export function pageBreaks(contentHeight: number): number[] {
-  const breaks: number[] = [];
-  let next = PAGE_HEIGHT - PRINT_MARGIN;
-  while (next < contentHeight) {
-    breaks.push(next);
-    next += PAGE_HEIGHT - 2 * PRINT_MARGIN;
-  }
-  return breaks;
-}
 
 interface CanvasProps {
   view: View;
