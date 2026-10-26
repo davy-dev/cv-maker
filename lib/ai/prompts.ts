@@ -2,7 +2,7 @@ import type { CompanyInfo, JobAnalysis } from "@/types/job";
 import type { CvData } from "@/types/cv";
 import { formatFactsForPrompt, type FactCatalog } from "./facts";
 import type { Claim } from "./verify";
-import { MAX_SECTION_PROJECTS } from "@/lib/cv/visibility";
+import { SUGGESTED_SECTION_PROJECTS } from "./cv";
 
 interface SkillForPrompt {
   name: string;
@@ -94,7 +94,7 @@ ${formatFactsForPrompt(catalog)}
 - Une réalisation d'une expérience ne cite que les faits de cette expérience (ou d'un projet qui lui est rattaché). Idem pour un projet.
 - Les mots-clés de l'offre ne s'utilisent que s'ils correspondent à un fait réel.
 - Choisis les expériences et projets les plus pertinents ; ceux que tu omets restent disponibles pour le candidat.
-- Le CV tient sur une page : choisis au plus ${MAX_SECTION_PROJECTS} projets, du plus pertinent au moins pertinent.
+- Le CV tient sur une page : choisis au plus ${SUGGESTED_SECTION_PROJECTS} projets, du plus pertinent au moins pertinent.
 - Regroupe les compétences du candidat (et uniquement les siennes) par catégorie.
 - skillsToAcquire : compétences demandées par le poste que le candidat n'a PAS d'après les faits. C'est un conseil séparé du CV : ne les mentionne nulle part ailleurs.
 - Rédige en français.`;

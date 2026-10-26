@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { emptyCvData, normalizeCvData } from "@/lib/cv/normalize";
+import { emptyCvData, isGeneratedCv, normalizeCvData } from "@/lib/cv/normalize";
 import { buildCvData } from "../helpers/fixtures";
 
 describe("normalizeCvData", () => {
@@ -39,5 +39,13 @@ describe("normalizeCvData", () => {
     expect(cv.hiddenSections).toEqual(["summary"]);
     expect(cv.hiddenSkillCategories).toEqual(["Outils"]);
     expect(cv.projects[0]).toMatchObject({ id: "p1", name: "CV Maker", hidden: true, highlights: [] });
+  });
+});
+
+describe("isGeneratedCv", () => {
+  it("distingue un brouillon pas encore généré d'un CV généré", () => {
+    expect(isGeneratedCv("{}")).toBe(false);
+    expect(isGeneratedCv("pas du json")).toBe(false);
+    expect(isGeneratedCv(JSON.stringify(buildCvData()))).toBe(true);
   });
 });

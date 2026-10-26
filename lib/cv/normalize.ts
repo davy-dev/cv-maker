@@ -97,3 +97,12 @@ export function normalizeCvData(json: string): CvData {
       : {}),
   };
 }
+
+/** Whether the CV was generated yet: before, it is stored as "{}". */
+export function isGeneratedCv(json: string): boolean {
+  try {
+    return Boolean(JSON.parse(json)?.header);
+  } catch {
+    return false;
+  }
+}

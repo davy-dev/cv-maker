@@ -1,6 +1,7 @@
 import type { CvField } from "@/lib/cv/fields";
 import { parseCustomSectionId, resolveLayout } from "@/lib/cv/layout";
 import { selectionKey } from "@/lib/cv/selection";
+import { isInProjectsSection } from "@/lib/cv/visibility";
 import type { CvData, CvProject, SectionId, TemplateId } from "@/types/cv";
 import { Editable, WhenFilled } from "./editable";
 import styles from "./executive-template.module.css";
@@ -279,7 +280,7 @@ function Section({ id, data, editable }: { id: SectionId; data: CvData; editable
       );
 
     case "projects": {
-      const projects = data.projects.filter((p) => !p.displayMode || p.displayMode === "projects-section");
+      const projects = data.projects.filter(isInProjectsSection);
       return (
         projects.length > 0 && (
           <section data-select={key}>

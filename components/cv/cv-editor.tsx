@@ -14,7 +14,7 @@ import { useCvAutosave, type AutosaveStatus } from "@/hooks/use-cv-autosave";
 import { cvReducer } from "@/lib/cv/reducer";
 import { VARIANTS } from "@/lib/cv/variants";
 import { cn } from "@/lib/utils";
-import { MAX_SECTION_PROJECTS, applyVisibility, isInProjectsSection } from "@/lib/cv/visibility";
+import { applyVisibility } from "@/lib/cv/visibility";
 import type { CvData, CvSection, GenerationReport, TemplateId } from "@/types/cv";
 import { PdfDownloadButton } from "./pdf-download-button";
 import { GenerationReportPanel } from "./generation-report";
@@ -61,7 +61,6 @@ export function CvEditor({ cvId, initialData, initialTemplateId, generationRepor
     router.push(`/cv/${cvId}/pdf`);
   };
 
-  const sectionProjectsShown = cvData.projects.filter((p) => !p.hidden && isInProjectsSection(p)).length;
 
   return (
     <div className="flex flex-col h-full">
@@ -180,11 +179,6 @@ export function CvEditor({ cvId, initialData, initialTemplateId, generationRepor
             onToggleShown={() => dispatch({ type: "TOGGLE_SHOW_PROJECTS" })}
             className="space-y-6"
           >
-            <p className={`text-xs ${sectionProjectsShown > MAX_SECTION_PROJECTS ? "text-amber-700" : "text-gray-500"}`}>
-              {sectionProjectsShown > MAX_SECTION_PROJECTS
-                ? `Seuls les ${MAX_SECTION_PROJECTS} premiers projets du bloc Projets apparaissent sur le CV : masquez-en un ou placez-le sous une expérience.`
-                : `Le bloc Projets affiche ${MAX_SECTION_PROJECTS} projets au maximum.`}
-            </p>
             {cvData.projects.map((project, index) => (
               <ItemBlock key={project.id} hidden={project.hidden} className="space-y-3">
                 <ItemHeader
@@ -193,12 +187,6 @@ export function CvEditor({ cvId, initialData, initialTemplateId, generationRepor
                   onToggleHidden={() => dispatch({ type: "TOGGLE_PROJECT_HIDDEN", index })}
                   onRemove={() => dispatch({ type: "REMOVE_PROJECT", index })}
                   confirmRemove="Supprimer ce projet ?"
-                  toggleDisabled={
-                    project.hidden &&
-                    sectionProjectsShown >= MAX_SECTION_PROJECTS &&
-                    isInProjectsSection(project)
-                  }
-                  toggleDisabledReason={`${MAX_SECTION_PROJECTS} projets déjà affichés dans le bloc Projets`}
                 />
                 <ProjectFields
                   project={project}

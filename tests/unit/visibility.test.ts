@@ -80,7 +80,7 @@ describe("applyVisibility", () => {
     expect(applyVisibility(data).projects[0].displayMode).toBe("projects-section");
   });
 
-  it("garde au plus 2 projets dans la section projets, sans compter ceux sous une expérience", () => {
+  it("garde tous les projets affichés, sans limite de nombre", () => {
     const data = cv({
       projects: [
         project({ id: "p1" }),
@@ -91,7 +91,7 @@ describe("applyVisibility", () => {
       ],
     });
 
-    expect(applyVisibility(data).projects.map((p) => p.id)).toEqual(["p1", "p2", "p3"]);
+    expect(applyVisibility(data).projects.map((p) => p.id)).toEqual(["p1", "p2", "p3", "p4"]);
   });
 
   it("ne modifie pas les données de l'éditeur", () => {

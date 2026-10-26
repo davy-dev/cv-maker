@@ -51,7 +51,7 @@ async function downloadedPageCount(page: import("@playwright/test").Page) {
 }
 
 test("l'aperçu HTML annonce les pages, comme le PDF téléchargé", async ({ page, user }) => {
-  // The projects section is capped at two projects, so the length comes from the experiences
+  // A long CV, from its experiences
   const cvId = insertCv(user.email, 1, null, 12);
   await page.goto(`/cv/${cvId}`);
 

@@ -2,13 +2,15 @@ import "server-only";
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { generatedCvs, users } from "@/lib/db/schema";
-import { normalizeCvData } from "@/lib/cv/normalize";
+import { isGeneratedCv, normalizeCvData } from "@/lib/cv/normalize";
 import type { CoverLetterData, CvData, GenerationReport, TemplateId } from "@/types/cv";
 
 export interface LoadedCv {
   id: string;
   title: string;
   templateId: TemplateId;
+  /** False for a draft whose CV is not generated yet */
+  generated: boolean;
   cvData: CvData;
   generationReport: GenerationReport | null;
   coverLetterData: CoverLetterData | null;
@@ -34,6 +36,7 @@ export async function loadUserCv(cvId: string, userId: string): Promise<LoadedCv
     id: cv.id,
     title: cv.title,
     templateId: cv.templateId as TemplateId,
+    generated: isGeneratedCv(cv.cvData),
     cvData,
     generationReport: parseJson<GenerationReport>(cv.generationReport),
     coverLetterData: parseJson<CoverLetterData>(cv.coverLetterData),

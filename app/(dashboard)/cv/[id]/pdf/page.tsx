@@ -15,7 +15,8 @@ export default async function PdfPage({ params }: PageProps<"/cv/[id]/pdf">) {
   const userId = await verifySession();
 
   const cv = await loadUserCv(id, userId);
-  if (!cv) {
+  // Nothing to preview or download before the CV is generated
+  if (!cv || !cv.generated) {
     notFound();
   }
 

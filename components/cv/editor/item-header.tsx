@@ -10,8 +10,6 @@ export function ItemHeader({
   onToggleHidden,
   onRemove,
   confirmRemove,
-  toggleDisabled,
-  toggleDisabledReason,
 }: {
   title: string;
   hidden: boolean;
@@ -19,8 +17,6 @@ export function ItemHeader({
   onRemove: () => void;
   /** Question asked before deleting */
   confirmRemove: string;
-  toggleDisabled?: boolean;
-  toggleDisabledReason?: string;
 }) {
   return (
     <div className="flex items-center justify-between">
@@ -30,8 +26,6 @@ export function ItemHeader({
           label="Afficher"
           checked={!hidden}
           onChange={onToggleHidden}
-          disabled={toggleDisabled}
-          disabledReason={toggleDisabledReason}
         />
         <Button
           variant="ghost"

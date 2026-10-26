@@ -10,7 +10,7 @@ user, along with the skills the offer asks for that the candidate does not have 
 Built with Next.js 16 (App Router, React 19), the Anthropic SDK with structured outputs, Drizzle + SQLite,
 HTML templates printed to PDF by Chrome.
 
-![CV editor: fact verification report, skills to acquire and live PDF preview](docs/screenshot.png)
+![Studio: the CV on a canvas with an experience selected, the layers on the left, its fields in the inspector, the cover letter alongside](docs/screenshot.png)
 
 ## How it works
 
