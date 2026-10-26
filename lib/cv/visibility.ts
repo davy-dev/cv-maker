@@ -39,6 +39,7 @@ export function applyVisibility(data: CvData): CvData {
       )
     ),
     interests: hidden.has("interests") ? [] : data.interests,
+    customSections: data.customSections?.filter((s) => !s.hidden),
   };
 }
 

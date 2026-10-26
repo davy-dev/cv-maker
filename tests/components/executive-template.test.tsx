@@ -103,4 +103,26 @@ describe("ExecutiveTemplate", () => {
     rerender(<ExecutiveTemplate data={buildCvData({ showPhoto: true, header })} />);
     expect(screen.getByRole("img", { name: "Jean Dupont" })).toHaveAttribute("src", "/uploads/abc-1.png");
   });
+
+  it("place les sections selon la mise en page, sections libres comprises", () => {
+    const { container } = render(
+      <ExecutiveTemplate
+        data={buildCvData({
+          customSections: [
+            { id: "l1", title: "Langues", content: "**Français** : langue maternelle\n\nAnglais : professionnel" },
+            { id: "vide", title: "Vide", content: "  " },
+          ],
+          layout: { main: ["custom:l1", "experience"], aside: ["summary"] },
+        })}
+      />
+    );
+
+    const titles = (column: string) =>
+      [...container.querySelectorAll(`${column} h2`)].map((h) => h.textContent);
+    expect(titles("main")).toEqual(["Langues", "Expérience professionnelle"]);
+    expect(titles("aside")).toEqual(["Profil", "Compétences techniques"]);
+    expect(screen.getByText("Français").tagName).toBe("B");
+    expect(screen.getByText("Anglais : professionnel")).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Vide" })).not.toBeInTheDocument();
+  });
 });

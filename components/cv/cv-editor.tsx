@@ -16,6 +16,7 @@ import type { CvData, CvSection, GenerationReport, TemplateId } from "@/types/cv
 import { CvPdfPreview } from "./cv-pdf-preview";
 import { GenerationReportPanel } from "./generation-report";
 import { BannerAppearanceFields } from "./editor/banner-appearance-fields";
+import { CustomSectionFields } from "./editor/custom-section-fields";
 import { EducationFields } from "./editor/education-fields";
 import { ExperienceFields } from "./editor/experience-fields";
 import { HeaderFields } from "./editor/header-fields";
@@ -246,6 +247,32 @@ export function CvEditor({ cvId, initialData, initialTemplateId, generationRepor
           >
             <InterestsFields interests={cvData.interests} dispatch={dispatch} />
           </SectionCard>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Sections libres</CardTitle>
+              <p className="text-xs text-gray-500">
+                Savoir-être, langues, veille… Affichées pour l&apos;instant par le seul modèle Executive.
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {cvData.customSections?.map((section, index) => (
+                <ItemBlock key={section.id} hidden={section.hidden}>
+                  <ItemHeader
+                    title={section.title || `Section ${index + 1}`}
+                    hidden={!!section.hidden}
+                    onToggleHidden={() => dispatch({ type: "TOGGLE_CUSTOM_SECTION_HIDDEN", id: section.id })}
+                    onRemove={() => dispatch({ type: "REMOVE_CUSTOM_SECTION", id: section.id })}
+                    confirmRemove="Supprimer cette section ?"
+                  />
+                  <CustomSectionFields section={section} dispatch={dispatch} />
+                </ItemBlock>
+              ))}
+              <AddButton onClick={() => dispatch({ type: "ADD_CUSTOM_SECTION", title: "Nouvelle section" })}>
+                + Ajouter une section
+              </AddButton>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Right: Preview */}

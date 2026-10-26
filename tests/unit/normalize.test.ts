@@ -14,6 +14,19 @@ describe("normalizeCvData", () => {
     expect(normalizeCvData(JSON.stringify(cv))).toEqual(cv);
   });
 
+  it("conserve les sections libres et la mise en page", () => {
+    const layout = { main: ["summary"], aside: ["custom:l1"] };
+    const cv = normalizeCvData(
+      JSON.stringify({ customSections: [{ id: "l1", title: "Langues", content: "Anglais", hidden: true }, {}], layout })
+    );
+
+    expect(cv.customSections).toEqual([
+      { id: "l1", title: "Langues", content: "Anglais", hidden: true },
+      { id: expect.any(String), title: "", content: "" },
+    ]);
+    expect(cv.layout).toEqual(layout);
+  });
+
   it("conserve les sections, catégories et projets masqués", () => {
     const cv = normalizeCvData(
       JSON.stringify({

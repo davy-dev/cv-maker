@@ -1,4 +1,5 @@
-import type { CvData, CvProject } from "@/types/cv";
+import { parseCustomSectionId, resolveLayout } from "@/lib/cv/layout";
+import type { CvData, CvProject, SectionId } from "@/types/cv";
 import { RichText } from "./rich-text";
 import styles from "./executive-template.module.css";
 
@@ -12,10 +13,7 @@ const DEFAULT_HEADER_TEXT = "#ffffff";
  */
 export function ExecutiveTemplate({ data }: { data: CvData }) {
   const { header } = data;
-  const sectionProjects = data.projects.filter(
-    (p) => !p.displayMode || p.displayMode === "projects-section"
-  );
-  const skillCategories = Object.entries(data.skills).filter(([, skills]) => skills.length > 0);
+  const layout = resolveLayout(data);
   const subtitle = [data.yearsExperience, header.location].filter(Boolean).join(" · ");
   const position = data.headerBgImagePosition ?? { x: 50, y: 50 };
 
@@ -87,106 +85,153 @@ export function ExecutiveTemplate({ data }: { data: CvData }) {
 
       <div className={styles.body}>
         <main className={styles.main}>
-          {data.summary && (
-            <section>
-              <h2 className={styles.sectionTitle}>Profil</h2>
-              <p className={styles.paragraph}>
-                <RichText text={data.summary} />
-              </p>
-            </section>
-          )}
-
-          {data.experience.length > 0 && (
-            <section>
-              <h2 className={styles.sectionTitle}>Expérience professionnelle</h2>
-              {data.experience.map((exp) => {
-                const linkedProjects = data.projects.filter(
-                  (p) => p.displayMode === "under-experience" && p.linkedExperienceId === exp.id
-                );
-                return (
-                  <div key={exp.id} className={styles.item}>
-                    <div className={styles.itemHeader}>
-                      <div className={styles.itemTitle}>
-                        {[exp.position, exp.company].filter(Boolean).join(" — ")}
-                      </div>
-                      <div className={styles.itemMeta}>
-                        {[formatPeriod(exp.startDate, exp.endDate), exp.location]
-                          .filter(Boolean)
-                          .join(" · ")}
-                      </div>
-                    </div>
-                    <Bullets items={exp.bullets} />
-                    {linkedProjects.map((project) => (
-                      <div key={project.id} className={styles.subProject}>
-                        <span className={styles.subProjectTitle}>{project.name}</span>
-                        {project.description && <> — {project.description}</>}
-                        <Bullets items={project.highlights} />
-                      </div>
-                    ))}
-                  </div>
-                );
-              })}
-            </section>
-          )}
-
-          {sectionProjects.length > 0 && (
-            <section>
-              <h2 className={styles.sectionTitle}>Projets</h2>
-              {sectionProjects.map((project) => (
-                <ProjectItem key={project.id} project={project} />
-              ))}
-            </section>
-          )}
+          {layout.main.map((section) => (
+            <Section key={section} id={section} data={data} />
+          ))}
         </main>
-
         <aside className={styles.aside}>
-          {skillCategories.length > 0 && (
-            <section>
-              <h2 className={styles.sectionTitle}>Compétences techniques</h2>
-              <div className={styles.stack}>
-                {skillCategories.map(([category, skills]) => (
-                  <div key={category} className={styles.item}>
-                    <div className={styles.strong}>{category}</div>
-                    <div>{skills.join(", ")}</div>
-                  </div>
-                ))}
-              </div>
-            </section>
-          )}
-
-          {data.education.length > 0 && (
-            <section>
-              <h2 className={styles.sectionTitle}>Formation</h2>
-              <div className={styles.stackLoose}>
-                {data.education.map((edu) => (
-                  <div key={edu.id} className={styles.item}>
-                    <div className={styles.strong}>
-                      {[edu.degree, edu.field].filter(Boolean).join(" — ")}
-                    </div>
-                    <div>
-                      {[edu.institution, formatPeriod(edu.startDate, edu.endDate)]
-                        .filter(Boolean)
-                        .join(" · ")}
-                    </div>
-                    {edu.description && <div className={styles.muted}>{edu.description}</div>}
-                  </div>
-                ))}
-              </div>
-            </section>
-          )}
-
-          {data.interests.length > 0 && (
-            <section>
-              <h2 className={styles.sectionTitle}>Centres d&apos;intérêt</h2>
-              {data.interests.map((interest, i) => (
-                <div key={i}>{interest}</div>
-              ))}
-            </section>
-          )}
+          {layout.aside.map((section) => (
+            <Section key={section} id={section} data={data} />
+          ))}
         </aside>
       </div>
     </div>
   );
+}
+
+/** One section, in whichever column the layout puts it; nothing when it is empty. */
+function Section({ id, data }: { id: SectionId; data: CvData }) {
+  const customId = parseCustomSectionId(id);
+  if (customId) {
+    const section = data.customSections?.find((s) => s.id === customId);
+    const lines = section?.content.split("\n").filter((line) => line.trim()) ?? [];
+    if (!section || lines.length === 0) return null;
+    return (
+      <section>
+        <h2 className={styles.sectionTitle}>{section.title}</h2>
+        {lines.map((line, i) => (
+          <div key={i} className={styles.line}>
+            <RichText text={line} />
+          </div>
+        ))}
+      </section>
+    );
+  }
+
+  switch (id) {
+    case "summary":
+      return (
+        data.summary && (
+          <section>
+            <h2 className={styles.sectionTitle}>Profil</h2>
+            <p className={styles.paragraph}>
+              <RichText text={data.summary} />
+            </p>
+          </section>
+        )
+      );
+
+    case "experience":
+      return (
+        data.experience.length > 0 && (
+          <section>
+            <h2 className={styles.sectionTitle}>Expérience professionnelle</h2>
+            {data.experience.map((exp) => {
+              const linkedProjects = data.projects.filter(
+                (p) => p.displayMode === "under-experience" && p.linkedExperienceId === exp.id
+              );
+              return (
+                <div key={exp.id} className={styles.item}>
+                  <div className={styles.itemHeader}>
+                    <div className={styles.itemTitle}>
+                      {[exp.position, exp.company].filter(Boolean).join(" — ")}
+                    </div>
+                    <div className={styles.itemMeta}>
+                      {[formatPeriod(exp.startDate, exp.endDate), exp.location].filter(Boolean).join(" · ")}
+                    </div>
+                  </div>
+                  <Bullets items={exp.bullets} />
+                  {linkedProjects.map((project) => (
+                    <div key={project.id} className={styles.subProject}>
+                      <span className={styles.subProjectTitle}>{project.name}</span>
+                      {project.description && <> — {project.description}</>}
+                      <Bullets items={project.highlights} />
+                    </div>
+                  ))}
+                </div>
+              );
+            })}
+          </section>
+        )
+      );
+
+    case "projects": {
+      const projects = data.projects.filter((p) => !p.displayMode || p.displayMode === "projects-section");
+      return (
+        projects.length > 0 && (
+          <section>
+            <h2 className={styles.sectionTitle}>Projets</h2>
+            {projects.map((project) => (
+              <ProjectItem key={project.id} project={project} />
+            ))}
+          </section>
+        )
+      );
+    }
+
+    case "skills": {
+      const categories = Object.entries(data.skills).filter(([, skills]) => skills.length > 0);
+      return (
+        categories.length > 0 && (
+          <section>
+            <h2 className={styles.sectionTitle}>Compétences techniques</h2>
+            <div className={styles.stack}>
+              {categories.map(([category, skills]) => (
+                <div key={category} className={styles.item}>
+                  <div className={styles.strong}>{category}</div>
+                  <div>{skills.join(", ")}</div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )
+      );
+    }
+
+    case "education":
+      return (
+        data.education.length > 0 && (
+          <section>
+            <h2 className={styles.sectionTitle}>Formation</h2>
+            <div className={styles.stackLoose}>
+              {data.education.map((edu) => (
+                <div key={edu.id} className={styles.item}>
+                  <div className={styles.strong}>{[edu.degree, edu.field].filter(Boolean).join(" — ")}</div>
+                  <div>
+                    {[edu.institution, formatPeriod(edu.startDate, edu.endDate)].filter(Boolean).join(" · ")}
+                  </div>
+                  {edu.description && <div className={styles.muted}>{edu.description}</div>}
+                </div>
+              ))}
+            </div>
+          </section>
+        )
+      );
+
+    case "interests":
+      return (
+        data.interests.length > 0 && (
+          <section>
+            <h2 className={styles.sectionTitle}>Centres d&apos;intérêt</h2>
+            {data.interests.map((interest, i) => (
+              <div key={i} className={styles.line}>
+                {interest}
+              </div>
+            ))}
+          </section>
+        )
+      );
+  }
 }
 
 function ProjectItem({ project }: { project: CvProject }) {

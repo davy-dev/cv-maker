@@ -3,6 +3,8 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 
 describe("Button", () => {
   it("déclenche onClick", async () => {
@@ -40,6 +42,19 @@ describe("Button", () => {
 });
 
 describe("Input", () => {
+  it("associe le label au champ même sans id fourni", () => {
+    render(
+      <>
+        <Input label="Poste" />
+        <Textarea label="Description" />
+        <Select label="Type" options={[{ value: "a", label: "A" }]} />
+      </>
+    );
+    expect(screen.getByLabelText("Poste")).toBeInstanceOf(HTMLInputElement);
+    expect(screen.getByLabelText("Description")).toBeInstanceOf(HTMLTextAreaElement);
+    expect(screen.getByLabelText("Type")).toBeInstanceOf(HTMLSelectElement);
+  });
+
   it("associe le label au champ via l'id", () => {
     render(<Input id="email" label="Email" />);
     expect(screen.getByLabelText("Email")).toBeInstanceOf(HTMLInputElement);

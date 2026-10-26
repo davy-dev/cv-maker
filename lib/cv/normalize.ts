@@ -1,4 +1,4 @@
-import type { CvData, CvSection } from "@/types/cv";
+import type { CvData, CvLayout, CvSection } from "@/types/cv";
 
 export function emptyCvData(): CvData {
   return {
@@ -77,6 +77,20 @@ export function normalizeCvData(json: string): CvData {
     interests: Array.isArray(parsed.interests) ? parsed.interests : [],
     ...(Array.isArray(parsed.hiddenSections)
       ? { hiddenSections: parsed.hiddenSections as CvSection[] }
+      : {}),
+    ...(Array.isArray(parsed.customSections)
+      ? {
+          customSections: parsed.customSections.map((s: Record<string, unknown>) => ({
+            id: typeof s.id === "string" ? s.id : crypto.randomUUID(),
+            title: typeof s.title === "string" ? s.title : "",
+            content: typeof s.content === "string" ? s.content : "",
+            ...(s.hidden ? { hidden: true } : {}),
+          })),
+        }
+      : {}),
+    // Kept as stored: resolveLayout() drops what no longer exists
+    ...(parsed.layout && typeof parsed.layout === "object"
+      ? { layout: parsed.layout as CvLayout }
       : {}),
     ...(Array.isArray(parsed.hiddenSkillCategories)
       ? { hiddenSkillCategories: parsed.hiddenSkillCategories as string[] }

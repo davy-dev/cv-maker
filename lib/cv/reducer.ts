@@ -1,4 +1,5 @@
-import type { CvData, CvExperience, CvEducation, CvProject, CvSection, ImagePosition } from "@/types/cv";
+import { customSectionId, moveSection, resolveLayout } from "@/lib/cv/layout";
+import type { CvColumn, CvCustomSection, CvData, CvExperience, CvEducation, CvProject, CvSection, ImagePosition, SectionId } from "@/types/cv";
 
 export type CvAction =
   | { type: "SET_HEADER_FIELD"; field: keyof CvData["header"]; value: string | null }
@@ -39,7 +40,12 @@ export type CvAction =
   | { type: "SET_HEADER_BG_COLOR"; value: string | null }
   | { type: "SET_HEADER_TEXT_COLOR"; value: string | null }
   | { type: "SET_HEADER_BG_IMAGE"; value: string | null }
-  | { type: "SET_HEADER_BG_IMAGE_POSITION"; value: ImagePosition | null };
+  | { type: "SET_HEADER_BG_IMAGE_POSITION"; value: ImagePosition | null }
+  | { type: "ADD_CUSTOM_SECTION"; title: string }
+  | { type: "REMOVE_CUSTOM_SECTION"; id: string }
+  | { type: "SET_CUSTOM_SECTION_FIELD"; id: string; field: "title" | "content"; value: string }
+  | { type: "TOGGLE_CUSTOM_SECTION_HIDDEN"; id: string }
+  | { type: "MOVE_SECTION"; section: SectionId; column: CvColumn; index: number };
 
 const cvActionHandlers: Record<CvAction["type"], (state: CvData, action: CvAction) => CvData> = {
   SET_HEADER_FIELD: (state, action) => {
@@ -303,6 +309,41 @@ const cvActionHandlers: Record<CvAction["type"], (state: CvData, action: CvActio
   SET_HEADER_BG_IMAGE_POSITION: (state, action) => {
     const a = action as Extract<CvAction, { type: "SET_HEADER_BG_IMAGE_POSITION" }>;
     return { ...state, headerBgImagePosition: a.value };
+  },
+  ADD_CUSTOM_SECTION: (state, action) => {
+    const a = action as Extract<CvAction, { type: "ADD_CUSTOM_SECTION" }>;
+    const section: CvCustomSection = { id: crypto.randomUUID(), title: a.title, content: "" };
+    return { ...state, customSections: [...(state.customSections ?? []), section] };
+  },
+  REMOVE_CUSTOM_SECTION: (state, action) => {
+    const a = action as Extract<CvAction, { type: "REMOVE_CUSTOM_SECTION" }>;
+    const section = customSectionId(a.id);
+    return {
+      ...state,
+      customSections: state.customSections?.filter((s) => s.id !== a.id),
+      layout: state.layout && {
+        main: state.layout.main.filter((id) => id !== section),
+        aside: state.layout.aside.filter((id) => id !== section),
+      },
+    };
+  },
+  SET_CUSTOM_SECTION_FIELD: (state, action) => {
+    const a = action as Extract<CvAction, { type: "SET_CUSTOM_SECTION_FIELD" }>;
+    return {
+      ...state,
+      customSections: state.customSections?.map((s) => (s.id === a.id ? { ...s, [a.field]: a.value } : s)),
+    };
+  },
+  TOGGLE_CUSTOM_SECTION_HIDDEN: (state, action) => {
+    const a = action as Extract<CvAction, { type: "TOGGLE_CUSTOM_SECTION_HIDDEN" }>;
+    return {
+      ...state,
+      customSections: state.customSections?.map((s) => (s.id === a.id ? { ...s, hidden: !s.hidden } : s)),
+    };
+  },
+  MOVE_SECTION: (state, action) => {
+    const a = action as Extract<CvAction, { type: "MOVE_SECTION" }>;
+    return { ...state, layout: moveSection(resolveLayout(state), a.section, a.column, a.index) };
   },
 };
 

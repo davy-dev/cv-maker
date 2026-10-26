@@ -100,3 +100,17 @@ describe("applyVisibility", () => {
     expect(data.summary).not.toBe("");
   });
 });
+
+describe("applyVisibility — sections libres", () => {
+  it("retire les sections libres masquées", () => {
+    const result = applyVisibility(
+      buildCvData({
+        customSections: [
+          { id: "a", title: "Langues", content: "Anglais" },
+          { id: "b", title: "Veille", content: "DDD", hidden: true },
+        ],
+      })
+    );
+    expect(result.customSections?.map((s) => s.id)).toEqual(["a"]);
+  });
+});

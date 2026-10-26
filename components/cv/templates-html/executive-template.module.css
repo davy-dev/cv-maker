@@ -157,9 +157,10 @@
 
 .itemHeader {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: baseline;
-  gap: 12px;
+  gap: 0 12px;
 }
 
 .itemTitle {
@@ -192,6 +193,10 @@
 
 .bullets li::marker {
   color: #2f6fb0;
+}
+
+.line {
+  text-wrap: pretty;
 }
 
 .subProject {
