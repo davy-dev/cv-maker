@@ -1,22 +1,32 @@
+import type { CvField } from "@/lib/cv/fields";
 import { parseCustomSectionId, resolveLayout } from "@/lib/cv/layout";
 import { selectionKey } from "@/lib/cv/selection";
 import type { CvData, CvProject, SectionId } from "@/types/cv";
-import { RichText } from "./rich-text";
+import { Editable, WhenFilled } from "./editable";
 import styles from "./executive-template.module.css";
 
 const DEFAULT_HEADER_BG = "linear-gradient(90deg, #110040cf 0%, #000829 91%)";
 const DEFAULT_HEADER_TEXT = "#ffffff";
+
+interface TemplateProps {
+  data: CvData;
+  /**
+   * In the studio: text can be edited in place, and empty slots stay on the
+   * page (with a placeholder) so they can be filled.
+   */
+  editable?: boolean;
+}
 
 /**
  * HTML template: printed to PDF by Chromium (see lib/cv/print-pdf.ts),
  * so the page shown is exactly the file downloaded.
  * Expects data already passed through applyVisibility().
  */
-export function ExecutiveTemplate({ data }: { data: CvData }) {
+export function ExecutiveTemplate({ data, editable = false }: TemplateProps) {
   const { header } = data;
   const layout = resolveLayout(data);
-  const subtitle = [data.yearsExperience, header.location].filter(Boolean).join(" · ");
   const position = data.headerBgImagePosition ?? { x: 50, y: 50 };
+  const placeholder = (text: string) => (editable ? text : undefined);
 
   return (
     <div className={styles.page}>
@@ -47,40 +57,72 @@ export function ExecutiveTemplate({ data }: { data: CvData }) {
             </div>
           ))}
         <div className={styles.headerContent}>
-          <h1 className={styles.name}>{header.name}</h1>
-          {header.title && <div className={styles.title}>{header.title}</div>}
-          {subtitle && <div className={styles.subtitle}>{subtitle}</div>}
+          <h1 className={styles.name}>
+            <Editable field={{ kind: "header", field: "name" }} value={header.name} placeholder={placeholder("Votre nom")} />
+          </h1>
+          {(header.title || editable) && (
+            <div className={styles.title}>
+              <Editable
+                field={{ kind: "header", field: "title" }}
+                value={header.title}
+                placeholder={placeholder("Titre du poste visé")}
+              />
+            </div>
+          )}
+          {(data.yearsExperience || header.location || editable) && (
+            <div className={styles.subtitle}>
+              <Editable
+                field={{ kind: "yearsExperience" }}
+                value={data.yearsExperience}
+                placeholder={placeholder("Années d'expérience")}
+              />
+              {data.yearsExperience && header.location && " · "}
+              <Editable field={{ kind: "header", field: "location" }} value={header.location} />
+            </div>
+          )}
           <div className={styles.contacts}>
-            {header.email && (
+            <WhenFilled field={{ kind: "header", field: "email" }} value={header.email}>
               <a className={styles.contact} href={`mailto:${header.email}`}>
                 <MailIcon />
-                {header.email}
+                <Editable field={{ kind: "header", field: "email" }} value={header.email} />
               </a>
-            )}
-            {header.phone && (
+            </WhenFilled>
+            <WhenFilled field={{ kind: "header", field: "phone" }} value={header.phone}>
               <span className={styles.contact}>
                 <PhoneIcon />
-                {header.phone}
+                <Editable field={{ kind: "header", field: "phone" }} value={header.phone} />
               </span>
-            )}
-            {header.linkedin && (
-              <a className={styles.contact} href={toHref(header.linkedin)}>
+            </WhenFilled>
+            <WhenFilled field={{ kind: "header", field: "linkedin" }} value={header.linkedin}>
+              <a className={styles.contact} href={toHref(header.linkedin ?? "")}>
                 <LinkedinIcon />
-                {toDisplayUrl(header.linkedin)}
+                <Editable
+                  field={{ kind: "header", field: "linkedin" }}
+                  value={header.linkedin ?? ""}
+                  display={toDisplayUrl(header.linkedin ?? "")}
+                />
               </a>
-            )}
-            {header.github && (
-              <a className={styles.contact} href={toHref(header.github)}>
+            </WhenFilled>
+            <WhenFilled field={{ kind: "header", field: "github" }} value={header.github}>
+              <a className={styles.contact} href={toHref(header.github ?? "")}>
                 <GithubIcon />
-                {toDisplayUrl(header.github)}
+                <Editable
+                  field={{ kind: "header", field: "github" }}
+                  value={header.github ?? ""}
+                  display={toDisplayUrl(header.github ?? "")}
+                />
               </a>
-            )}
-            {header.website && (
-              <a className={styles.contact} href={toHref(header.website)}>
+            </WhenFilled>
+            <WhenFilled field={{ kind: "header", field: "website" }} value={header.website}>
+              <a className={styles.contact} href={toHref(header.website ?? "")}>
                 <GlobeIcon />
-                {toDisplayUrl(header.website)}
+                <Editable
+                  field={{ kind: "header", field: "website" }}
+                  value={header.website ?? ""}
+                  display={toDisplayUrl(header.website ?? "")}
+                />
               </a>
-            )}
+            </WhenFilled>
           </div>
         </div>
       </header>
@@ -88,12 +130,12 @@ export function ExecutiveTemplate({ data }: { data: CvData }) {
       <div className={styles.body}>
         <main className={styles.main}>
           {layout.main.map((section) => (
-            <Section key={section} id={section} data={data} />
+            <Section key={section} id={section} data={data} editable={editable} />
           ))}
         </main>
         <aside className={styles.aside}>
           {layout.aside.map((section) => (
-            <Section key={section} id={section} data={data} />
+            <Section key={section} id={section} data={data} editable={editable} />
           ))}
         </aside>
       </div>
@@ -102,19 +144,35 @@ export function ExecutiveTemplate({ data }: { data: CvData }) {
 }
 
 /** One section, in whichever column the layout puts it; nothing when it is empty. */
-function Section({ id, data }: { id: SectionId; data: CvData }) {
+function Section({ id, data, editable }: { id: SectionId; data: CvData; editable: boolean }) {
   const key = selectionKey({ kind: "section", section: id });
   const customId = parseCustomSectionId(id);
   if (customId) {
     const section = data.customSections?.find((s) => s.id === customId);
-    const lines = section?.content.split("\n").filter((line) => line.trim()) ?? [];
-    if (!section || lines.length === 0) return null;
+    if (!section) return null;
+    // Line numbers address the stored content, blank lines included
+    const lines = section.content
+      .split("\n")
+      .map((text, index) => ({ text, index }))
+      .filter((line) => editable || line.text.trim());
+    if (lines.length === 0) return null;
     return (
       <section data-select={key}>
-        <h2 className={styles.sectionTitle}>{section.title}</h2>
-        {lines.map((line, i) => (
-          <div key={i} className={styles.line}>
-            <RichText text={line} />
+        <h2 className={styles.sectionTitle}>
+          <Editable
+            field={{ kind: "customTitle", id: section.id }}
+            value={section.title}
+            placeholder={editable ? "Titre" : undefined}
+          />
+        </h2>
+        {lines.map((line) => (
+          <div key={line.index} className={styles.line}>
+            <Editable
+              field={{ kind: "customLine", id: section.id, index: line.index }}
+              value={line.text}
+              rich
+              placeholder={editable ? "Écrire ici…" : undefined}
+            />
           </div>
         ))}
       </section>
@@ -122,17 +180,25 @@ function Section({ id, data }: { id: SectionId; data: CvData }) {
   }
 
   switch (id) {
-    case "summary":
+    case "summary": {
+      // A hidden summary arrives empty: it stays off the page in the studio too
+      const shown = data.summary || (editable && !data.hiddenSections?.includes("summary"));
       return (
-        data.summary && (
+        shown && (
           <section data-select={key}>
             <h2 className={styles.sectionTitle}>Profil</h2>
             <p className={styles.paragraph}>
-              <RichText text={data.summary} />
+              <Editable
+                field={{ kind: "summary" }}
+                value={data.summary}
+                rich
+                placeholder={editable ? "Présentez-vous en quelques lignes" : undefined}
+              />
             </p>
           </section>
         )
       );
+    }
 
     case "experience":
       return (
@@ -143,22 +209,54 @@ function Section({ id, data }: { id: SectionId; data: CvData }) {
               const linkedProjects = data.projects.filter(
                 (p) => p.displayMode === "under-experience" && p.linkedExperienceId === exp.id
               );
+              const field = (name: "position" | "company" | "location" | "startDate" | "endDate"): CvField => ({
+                kind: "experience",
+                id: exp.id,
+                field: name,
+              });
               return (
                 <div key={exp.id} data-select={`item:experience:${exp.id}`} className={styles.item}>
                   <div className={styles.itemHeader}>
                     <div className={styles.itemTitle}>
-                      {[exp.position, exp.company].filter(Boolean).join(" — ")}
+                      <Editable
+                        field={field("position")}
+                        value={exp.position}
+                        placeholder={editable && !exp.company ? "Poste" : undefined}
+                      />
+                      {exp.position && exp.company && " — "}
+                      <Editable field={field("company")} value={exp.company} />
                     </div>
-                    <div className={styles.itemMeta}>
-                      {[formatPeriod(exp.startDate, exp.endDate), exp.location].filter(Boolean).join(" · ")}
-                    </div>
+                    {(exp.startDate || exp.endDate || exp.location || editable) && (
+                      <div className={styles.itemMeta}>
+                        <Editable field={field("startDate")} value={exp.startDate} />
+                        {exp.startDate && exp.endDate && " – "}
+                        <Editable field={field("endDate")} value={exp.endDate} />
+                        {(exp.startDate || exp.endDate) && exp.location && " · "}
+                        <Editable field={field("location")} value={exp.location} />
+                      </div>
+                    )}
                   </div>
-                  <Bullets items={exp.bullets} />
+                  <Bullets
+                    items={exp.bullets}
+                    field={(index) => ({ kind: "experienceBullet", id: exp.id, index })}
+                    editable={editable}
+                  />
                   {linkedProjects.map((project) => (
                     <div key={project.id} data-select={`item:projects:${project.id}`} className={styles.subProject}>
-                      <span className={styles.subProjectTitle}>{project.name}</span>
-                      {project.description && <> — {project.description}</>}
-                      <Bullets items={project.highlights} />
+                      <span className={styles.subProjectTitle}>
+                        <Editable field={{ kind: "project", id: project.id, field: "name" }} value={project.name} />
+                      </span>
+                      {project.description && " — "}
+                      <Editable
+                        field={{ kind: "project", id: project.id, field: "description" }}
+                        value={project.description}
+                        rich
+                      />
+                      <Bullets
+                        items={project.highlights}
+                        field={(index) => ({ kind: "projectHighlight", id: project.id, index })}
+                        editable={editable}
+                      />
                     </div>
                   ))}
                 </div>
@@ -175,7 +273,7 @@ function Section({ id, data }: { id: SectionId; data: CvData }) {
           <section data-select={key}>
             <h2 className={styles.sectionTitle}>Projets</h2>
             {projects.map((project) => (
-              <ProjectItem key={project.id} project={project} />
+              <ProjectItem key={project.id} project={project} editable={editable} />
             ))}
           </section>
         )
@@ -191,8 +289,12 @@ function Section({ id, data }: { id: SectionId; data: CvData }) {
             <div className={styles.stack}>
               {categories.map(([category, skills]) => (
                 <div key={category} data-select={`item:skills:${category}`} className={styles.item}>
-                  <div className={styles.strong}>{category}</div>
-                  <div>{skills.join(", ")}</div>
+                  <div className={styles.strong}>
+                    <Editable field={{ kind: "skillCategory", category }} value={category} />
+                  </div>
+                  <div>
+                    <Editable field={{ kind: "skillList", category }} value={skills.join(", ")} />
+                  </div>
                 </div>
               ))}
             </div>
@@ -207,15 +309,38 @@ function Section({ id, data }: { id: SectionId; data: CvData }) {
           <section data-select={key}>
             <h2 className={styles.sectionTitle}>Formation</h2>
             <div className={styles.stackLoose}>
-              {data.education.map((edu) => (
-                <div key={edu.id} data-select={`item:education:${edu.id}`} className={styles.item}>
-                  <div className={styles.strong}>{[edu.degree, edu.field].filter(Boolean).join(" — ")}</div>
-                  <div>
-                    {[edu.institution, formatPeriod(edu.startDate, edu.endDate)].filter(Boolean).join(" · ")}
+              {data.education.map((edu) => {
+                const field = (
+                  name: "degree" | "field" | "institution" | "startDate" | "endDate" | "description"
+                ): CvField => ({ kind: "education", id: edu.id, field: name });
+                return (
+                  <div key={edu.id} data-select={`item:education:${edu.id}`} className={styles.item}>
+                    <div className={styles.strong}>
+                      <Editable
+                        field={field("degree")}
+                        value={edu.degree}
+                        placeholder={editable && !edu.field ? "Diplôme" : undefined}
+                      />
+                      {edu.degree && edu.field && " — "}
+                      <Editable field={field("field")} value={edu.field} />
+                    </div>
+                    {(edu.institution || edu.startDate || edu.endDate || editable) && (
+                      <div>
+                        <Editable field={field("institution")} value={edu.institution} />
+                        {edu.institution && (edu.startDate || edu.endDate) && " · "}
+                        <Editable field={field("startDate")} value={edu.startDate} />
+                        {edu.startDate && edu.endDate && " – "}
+                        <Editable field={field("endDate")} value={edu.endDate} />
+                      </div>
+                    )}
+                    {(edu.description || editable) && (
+                      <div className={styles.muted}>
+                        <Editable field={field("description")} value={edu.description} />
+                      </div>
+                    )}
                   </div>
-                  {edu.description && <div className={styles.muted}>{edu.description}</div>}
-                </div>
-              ))}
+                );
+              })}
             </div>
           </section>
         )
@@ -226,9 +351,13 @@ function Section({ id, data }: { id: SectionId; data: CvData }) {
         data.interests.length > 0 && (
           <section data-select={key}>
             <h2 className={styles.sectionTitle}>Centres d&apos;intérêt</h2>
-            {data.interests.map((interest, i) => (
-              <div key={i} className={styles.line}>
-                {interest}
+            {data.interests.map((interest, index) => (
+              <div key={index} className={styles.line}>
+                <Editable
+                  field={{ kind: "interest", index }}
+                  value={interest}
+                  placeholder={editable ? "Nouvel intérêt" : undefined}
+                />
               </div>
             ))}
           </section>
@@ -237,50 +366,72 @@ function Section({ id, data }: { id: SectionId; data: CvData }) {
   }
 }
 
-function ProjectItem({ project }: { project: CvProject }) {
-  const note = [project.role, project.technologies.join(", ")].filter(Boolean).join(" · ");
+function ProjectItem({ project, editable }: { project: CvProject; editable: boolean }) {
+  const field = (name: "name" | "role" | "description" | "impact"): CvField => ({
+    kind: "project",
+    id: project.id,
+    field: name,
+  });
+  const technologies = project.technologies.join(", ");
   return (
     <div data-select={`item:projects:${project.id}`} className={styles.item}>
       <div className={styles.itemHeader}>
-        <div className={styles.itemTitle}>{project.name}</div>
+        <div className={styles.itemTitle}>
+          <Editable field={field("name")} value={project.name} placeholder={editable ? "Nom du projet" : undefined} />
+        </div>
         {project.url && (
           <a className={styles.itemMeta} href={toHref(project.url)}>
             {toDisplayUrl(project.url)}
           </a>
         )}
       </div>
-      {note && <div className={styles.itemNote}>{note}</div>}
-      {project.description && (
+      {(project.role || technologies || editable) && (
+        <div className={styles.itemNote}>
+          <Editable field={field("role")} value={project.role} />
+          {project.role && technologies && " · "}
+          {technologies}
+        </div>
+      )}
+      {(project.description || editable) && (
         <p className={styles.paragraph}>
-          <RichText text={project.description} />
+          <Editable field={field("description")} value={project.description} rich />
         </p>
       )}
-      <Bullets items={project.highlights} />
-      {project.impact && (
+      <Bullets
+        items={project.highlights}
+        field={(index) => ({ kind: "projectHighlight", id: project.id, index })}
+        editable={editable}
+      />
+      {(project.impact || editable) && (
         <p className={styles.paragraph}>
-          <RichText text={project.impact} />
+          <Editable field={field("impact")} value={project.impact} rich />
         </p>
       )}
     </div>
   );
 }
 
-function Bullets({ items }: { items: string[] }) {
-  const lines = items.filter((item) => item.trim());
+/** Empty points are left out of the print, but kept in the studio to be typed into. */
+function Bullets({
+  items,
+  field,
+  editable,
+}: {
+  items: string[];
+  field: (index: number) => CvField;
+  editable: boolean;
+}) {
+  const lines = items.map((text, index) => ({ text, index })).filter((line) => editable || line.text.trim());
   if (lines.length === 0) return null;
   return (
     <ul className={styles.bullets}>
-      {lines.map((line, i) => (
-        <li key={i}>
-          <RichText text={line} />
+      {lines.map((line) => (
+        <li key={line.index}>
+          <Editable field={field(line.index)} value={line.text} rich placeholder={editable ? "Nouveau point" : undefined} />
         </li>
       ))}
     </ul>
   );
-}
-
-function formatPeriod(start: string, end: string): string {
-  return start && end ? `${start} – ${end}` : end || start;
 }
 
 function toHref(url: string): string {

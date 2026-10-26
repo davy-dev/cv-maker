@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useReducer, useState } from "react";
+import { EditingContext, type EditingApi } from "@/components/cv/templates-html/editable";
 import { ExecutiveTemplate } from "@/components/cv/templates-html/executive-template";
 import { useCvAutosave } from "@/hooks/use-cv-autosave";
+import { fieldKey, insertAfter, isLiveField, readField, removeEntry, writeField, type CvField } from "@/lib/cv/fields";
 import { cvReducer } from "@/lib/cv/reducer";
 import { resolveSelection, selectionKey, type Selection } from "@/lib/cv/selection";
 import { applyVisibility } from "@/lib/cv/visibility";
@@ -46,6 +48,15 @@ export function Studio({ cvId, title, initialData, generationReport }: StudioPro
   const view = customView ?? (viewport ? fitView(viewport, page) : { x: 0, y: 0, zoom: 1 });
 
   const [downloading, setDownloading] = useState(false);
+
+  // The text being typed on the page, and its value before, for Escape
+  const [editing, setEditing] = useState<{
+    field: CvField;
+    original: string;
+    caretPoint: { x: number; y: number } | null;
+  } | null>(null);
+  const startEditing = (field: CvField, caretPoint: { x: number; y: number } | null) =>
+    setEditing({ field, original: readField(data, field), caretPoint });
 
   const center = viewport ? { x: viewport.width / 2, y: viewport.height / 2 } : { x: 0, y: 0 };
   const zoomBy = (direction: 1 | -1) =>
@@ -121,7 +132,52 @@ export function Studio({ cvId, title, initialData, generationReport }: StudioPro
   };
 
   // Not re-rendered while panning and zooming
-  const cvPage = useMemo(() => <ExecutiveTemplate data={applyVisibility(data)} />, [data]);
+  const cvPage = useMemo(() => {
+    const write = (field: CvField, value: string) => {
+      const action = writeField(data, field, value);
+      if (action) dispatch(action);
+    };
+    const api: EditingApi = {
+      editing: editing?.field ?? null,
+      caretPoint: editing?.caretPoint ?? null,
+      onInput: (field, value) => {
+        if (isLiveField(field)) write(field, value);
+      },
+      onFinish: (field, reason, value) => {
+        // A blur arriving after Enter or Escape already moved on
+        if (!editing || fieldKey(editing.field) !== fieldKey(field)) return;
+        if (reason === "cancel") {
+          if (isLiveField(field)) write(field, editing.original);
+          setEditing(null);
+          return;
+        }
+        if (reason === "delete-empty") {
+          const removed = removeEntry(data, field);
+          if (!removed) return; // not an entry of a list: keep typing
+          dispatch(removed.action);
+          setEditing(
+            removed.previous
+              ? { field: removed.previous, original: readField(data, removed.previous), caretPoint: null }
+              : null
+          );
+          return;
+        }
+        if (!isLiveField(field)) write(field, value);
+        const inserted = reason === "enter" ? insertAfter(data, field) : null;
+        if (inserted) {
+          dispatch(inserted.action);
+          setEditing({ field: inserted.next, original: "", caretPoint: null });
+        } else {
+          setEditing(null);
+        }
+      },
+    };
+    return (
+      <EditingContext value={api}>
+        <ExecutiveTemplate data={applyVisibility(data)} editable />
+      </EditingContext>
+    );
+  }, [data, editing]);
 
   return (
     <div className="flex h-full flex-col bg-[#1e1e1e]">
@@ -157,6 +213,7 @@ export function Studio({ cvId, title, initialData, generationReport }: StudioPro
           spacePanning={spaceHeld}
           selectedKey={selection.kind === "document" ? null : selectionKey(selection)}
           onSelect={setSelection}
+          onStartEditing={startEditing}
           title={title}
         >
           {cvPage}

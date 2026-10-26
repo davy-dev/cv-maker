@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { parseFieldKey, type CvField } from "@/lib/cv/fields";
 import { parseSelectionKey, type Selection } from "@/lib/cv/selection";
 import { zoomAround, type Size, type View } from "@/lib/studio/view";
 
@@ -39,6 +40,8 @@ interface CanvasProps {
   spacePanning: boolean;
   selectedKey: string | null;
   onSelect: (selection: Selection) => void;
+  /** Double-click on a piece of text: edit it in place, caret where clicked */
+  onStartEditing: (field: CvField, point: { x: number; y: number }) => void;
   title: string;
   children: React.ReactNode;
 }
@@ -54,6 +57,7 @@ export function Canvas({
   spacePanning,
   selectedKey,
   onSelect,
+  onStartEditing,
   title,
   children,
 }: CanvasProps) {
@@ -121,8 +125,18 @@ export function Canvas({
       return;
     }
     if (e.button !== 0) return;
+    // Clicks in the text being typed move the caret
+    if ((e.target as HTMLElement).closest("[data-editing]")) return;
     const key = selectableAt(e.target);
     onSelect((key && parseSelectionKey(key)) || { kind: "document" });
+  }
+
+  function handleDoubleClick(e: React.MouseEvent) {
+    if (panMode) return;
+    const element = (e.target as HTMLElement).closest("[data-field]");
+    if (!element || !pageRef.current?.contains(element) || element.hasAttribute("data-editing")) return;
+    const field = parseFieldKey(element.getAttribute("data-field")!);
+    if (field) onStartEditing(field, { x: e.clientX, y: e.clientY });
   }
 
   function handlePointerMove(e: React.PointerEvent) {
@@ -147,6 +161,7 @@ export function Canvas({
       style={{ cursor, touchAction: "none" }}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
+      onDoubleClick={handleDoubleClick}
       onPointerUp={() => setPan(null)}
       onPointerCancel={() => setPan(null)}
       onPointerLeave={() => setHoveredKey(null)}
@@ -208,7 +223,11 @@ export function Canvas({
 
 /** Outlines are drawn by CSS on the CV's own elements: nothing to measure or keep in sync. */
 function outlineCss(selectedKey: string | null, hoveredKey: string | null): string {
-  const rules: string[] = [];
+  const rules: string[] = [
+    // Empty slots of the studio: visible, but plainly not part of the CV
+    "[data-placeholder] { opacity: 0.45; font-style: italic; }",
+    `[data-editing] { outline: calc(1px / var(--zoom)) solid ${SELECTION_COLOR}; outline-offset: calc(1px / var(--zoom)); }`,
+  ];
   if (hoveredKey && hoveredKey !== selectedKey) {
     rules.push(
       `[data-select="${escapeAttribute(hoveredKey)}"] { outline: calc(1px / var(--zoom)) solid ${SELECTION_COLOR}; outline-offset: calc(2px / var(--zoom)); }`

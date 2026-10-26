@@ -11,12 +11,14 @@ export type CvAction =
   | { type: "SET_EXPERIENCE_BULLET"; expIndex: number; bulletIndex: number; value: string }
   | { type: "ADD_EXPERIENCE_BULLET"; expIndex: number }
   | { type: "REMOVE_EXPERIENCE_BULLET"; expIndex: number; bulletIndex: number }
+  | { type: "INSERT_EXPERIENCE_BULLET"; expIndex: number; bulletIndex: number }
   | { type: "ADD_EDUCATION" }
   | { type: "REMOVE_EDUCATION"; index: number }
   | { type: "SET_EDUCATION_FIELD"; index: number; field: keyof CvEducation; value: string }
   | { type: "SET_SKILL_CATEGORY"; oldCategory: string; newCategory: string }
   | { type: "ADD_SKILL"; category: string; skill: string }
   | { type: "REMOVE_SKILL"; category: string; skillIndex: number }
+  | { type: "SET_SKILLS"; category: string; skills: string[] }
   | { type: "ADD_PROJECT" }
   | { type: "REMOVE_PROJECT"; index: number }
   | { type: "SET_PROJECT_FIELD"; index: number; field: keyof CvProject; value: string }
@@ -24,12 +26,15 @@ export type CvAction =
   | { type: "REMOVE_PROJECT_TECHNOLOGY"; projectIndex: number; techIndex: number }
   | { type: "ADD_PROJECT_HIGHLIGHT"; index: number; value: string }
   | { type: "REMOVE_PROJECT_HIGHLIGHT"; projectIndex: number; highlightIndex: number }
+  | { type: "SET_PROJECT_HIGHLIGHT"; projectIndex: number; highlightIndex: number; value: string }
+  | { type: "INSERT_PROJECT_HIGHLIGHT"; projectIndex: number; highlightIndex: number }
   | { type: "ADD_PROJECT_LINK"; index: number; label: string; url: string }
   | { type: "REMOVE_PROJECT_LINK"; projectIndex: number; linkIndex: number }
   | { type: "SET_PROJECT_LINK_FIELD"; projectIndex: number; linkIndex: number; field: "label" | "url"; value: string }
   | { type: "ADD_INTEREST"; value: string }
   | { type: "REMOVE_INTEREST"; index: number }
   | { type: "SET_INTEREST"; index: number; value: string }
+  | { type: "INSERT_INTEREST"; index: number }
   | { type: "TOGGLE_SHOW_PHOTO" }
   | { type: "TOGGLE_SHOW_PROJECTS" }
   | { type: "TOGGLE_SECTION"; section: CvSection }
@@ -110,6 +115,14 @@ const cvActionHandlers: Record<CvAction["type"], (state: CvData, action: CvActio
     experience[a.expIndex] = { ...experience[a.expIndex], bullets };
     return { ...state, experience };
   },
+  INSERT_EXPERIENCE_BULLET: (state, action) => {
+    const a = action as Extract<CvAction, { type: "INSERT_EXPERIENCE_BULLET" }>;
+    const experience = [...state.experience];
+    const bullets = [...experience[a.expIndex].bullets];
+    bullets.splice(a.bulletIndex, 0, "");
+    experience[a.expIndex] = { ...experience[a.expIndex], bullets };
+    return { ...state, experience };
+  },
   ADD_EDUCATION: (state) => ({
     ...state,
     education: [
@@ -148,12 +161,16 @@ const cvActionHandlers: Record<CvAction["type"], (state: CvData, action: CvActio
     if (skills[a.category].length === 0) delete skills[a.category];
     return { ...state, skills };
   },
+  SET_SKILLS: (state, action) => {
+    const a = action as Extract<CvAction, { type: "SET_SKILLS" }>;
+    return { ...state, skills: { ...state.skills, [a.category]: a.skills } };
+  },
   SET_SKILL_CATEGORY: (state, action) => {
     const a = action as Extract<CvAction, { type: "SET_SKILL_CATEGORY" }>;
-    const skills = { ...state.skills };
-    const existing = skills[a.oldCategory] || [];
-    delete skills[a.oldCategory];
-    skills[a.newCategory] = existing;
+    // Renamed in place: the category keeps its position on the CV
+    const skills = Object.fromEntries(
+      Object.entries(state.skills).map(([category, list]) => [category === a.oldCategory ? a.newCategory : category, list])
+    );
     // A hidden category stays hidden under its new name
     const hiddenSkillCategories = state.hiddenSkillCategories?.map((c) =>
       c === a.oldCategory ? a.newCategory : c
@@ -227,6 +244,22 @@ const cvActionHandlers: Record<CvAction["type"], (state: CvData, action: CvActio
     };
     return { ...state, projects };
   },
+  SET_PROJECT_HIGHLIGHT: (state, action) => {
+    const a = action as Extract<CvAction, { type: "SET_PROJECT_HIGHLIGHT" }>;
+    const projects = [...state.projects];
+    const highlights = [...projects[a.projectIndex].highlights];
+    highlights[a.highlightIndex] = a.value;
+    projects[a.projectIndex] = { ...projects[a.projectIndex], highlights };
+    return { ...state, projects };
+  },
+  INSERT_PROJECT_HIGHLIGHT: (state, action) => {
+    const a = action as Extract<CvAction, { type: "INSERT_PROJECT_HIGHLIGHT" }>;
+    const projects = [...state.projects];
+    const highlights = [...projects[a.projectIndex].highlights];
+    highlights.splice(a.highlightIndex, 0, "");
+    projects[a.projectIndex] = { ...projects[a.projectIndex], highlights };
+    return { ...state, projects };
+  },
   ADD_PROJECT_LINK: (state, action) => {
     const a = action as Extract<CvAction, { type: "ADD_PROJECT_LINK" }>;
     const projects = [...state.projects];
@@ -265,6 +298,12 @@ const cvActionHandlers: Record<CvAction["type"], (state: CvData, action: CvActio
     const a = action as Extract<CvAction, { type: "SET_INTEREST" }>;
     const interests = [...state.interests];
     interests[a.index] = a.value;
+    return { ...state, interests };
+  },
+  INSERT_INTEREST: (state, action) => {
+    const a = action as Extract<CvAction, { type: "INSERT_INTEREST" }>;
+    const interests = [...state.interests];
+    interests.splice(a.index, 0, "");
     return { ...state, interests };
   },
   TOGGLE_SHOW_PHOTO: (state) => ({ ...state, showPhoto: !state.showPhoto }),
