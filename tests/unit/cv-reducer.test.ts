@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { cvReducer } from "@/components/cv/cv-editor";
+import { cvReducer } from "@/lib/cv/reducer";
 import { buildCvData } from "../helpers/fixtures";
 
 vi.mock("@/lib/actions/cv", () => ({ saveCvData: vi.fn(), updateCvTemplate: vi.fn() }));
