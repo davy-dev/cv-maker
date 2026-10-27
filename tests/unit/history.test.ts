@@ -34,6 +34,11 @@ describe("historique du CV", () => {
     expect(run([[summary("A"), 0], [{ type: "SET_YEARS_EXPERIENCE", value: "3 ans" }, 100]]).past).toHaveLength(2);
   });
 
+  it("regroupe le glissé du curseur d'arrondi en une seule étape", () => {
+    const radius = (value: number): CvAction => ({ type: "SET_PHOTO_RADIUS", value });
+    expect(run([[radius(40), 0], [radius(30), 50], [radius(20), 100]]).past).toHaveLength(1);
+  });
+
   it("ne regroupe jamais les ajouts, suppressions ou déplacements", () => {
     expect(run([[{ type: "ADD_EXPERIENCE" }, 0], [{ type: "ADD_EXPERIENCE" }, 10]]).past).toHaveLength(2);
     expect(mergeKey({ type: "ADD_EXPERIENCE" })).toBeNull();

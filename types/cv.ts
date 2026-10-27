@@ -102,6 +102,8 @@ export interface CvData {
   summary: string;
   yearsExperience: string;
   showPhoto: boolean;
+  /** Corner radius of the photo, in % of its size: 0 square, 50 round (the default) */
+  photoRadius?: number;
   showProjects: boolean;
   headerBgColor: string | null;
   headerTextColor: string | null;

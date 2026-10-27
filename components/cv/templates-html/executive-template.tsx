@@ -50,6 +50,8 @@ export function ExecutiveHeader({ data, editable = false }: TemplateProps) {
   const { header } = data;
   const position = data.headerBgImagePosition ?? { x: 50, y: 50 };
   const placeholder = (text: string) => (editable ? text : undefined);
+  // Round unless the user chose otherwise
+  const photoStyle = data.photoRadius === undefined ? undefined : { borderRadius: `${data.photoRadius}%` };
 
   return (
     <header
@@ -77,9 +79,9 @@ export function ExecutiveHeader({ data, editable = false }: TemplateProps) {
       {data.showPhoto &&
         (header.image ? (
           // eslint-disable-next-line @next/next/no-img-element -- printed by Chromium, no optimization wanted
-          <img src={header.image} alt={header.name} className={styles.photo} />
+          <img src={header.image} alt={header.name} className={styles.photo} style={photoStyle} />
         ) : (
-          <div className={styles.photoPlaceholder} aria-hidden="true">
+          <div className={styles.photoPlaceholder} style={photoStyle} aria-hidden="true">
             {header.name?.[0] ?? "?"}
           </div>
         ))}

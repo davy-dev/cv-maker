@@ -56,3 +56,12 @@ describe("cvReducer — sections libres et mise en page", () => {
     });
   });
 });
+
+describe("cvReducer — arrondi de la photo", () => {
+  it("règle l'arrondi entre carré (0) et rond (50)", () => {
+    expect(cvReducer(buildCvData(), { type: "SET_PHOTO_RADIUS", value: 12 }).photoRadius).toBe(12);
+    expect(cvReducer(buildCvData(), { type: "SET_PHOTO_RADIUS", value: -5 }).photoRadius).toBe(0);
+    expect(cvReducer(buildCvData(), { type: "SET_PHOTO_RADIUS", value: 80 }).photoRadius).toBe(50);
+    expect(cvReducer(buildCvData(), { type: "SET_PHOTO_RADIUS", value: Number.NaN }).photoRadius).toBe(50);
+  });
+});

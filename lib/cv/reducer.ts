@@ -36,6 +36,7 @@ export type CvAction =
   | { type: "SET_INTEREST"; index: number; value: string }
   | { type: "INSERT_INTEREST"; index: number }
   | { type: "TOGGLE_SHOW_PHOTO" }
+  | { type: "SET_PHOTO_RADIUS"; value: number }
   | { type: "TOGGLE_SHOW_PROJECTS" }
   | { type: "TOGGLE_SECTION"; section: CvSection }
   | { type: "TOGGLE_EXPERIENCE_HIDDEN"; index: number }
@@ -316,6 +317,10 @@ const cvActionHandlers: Record<CvAction["type"], (state: CvData, action: CvActio
     return { ...state, interests };
   },
   TOGGLE_SHOW_PHOTO: (state) => ({ ...state, showPhoto: !state.showPhoto }),
+  SET_PHOTO_RADIUS: (state, action) => {
+    const a = action as Extract<CvAction, { type: "SET_PHOTO_RADIUS" }>;
+    return { ...state, photoRadius: clampPhotoRadius(a.value) };
+  },
   TOGGLE_SHOW_PROJECTS: (state) => ({ ...state, showProjects: !state.showProjects }),
   TOGGLE_SECTION: (state, action) => {
     const a = action as Extract<CvAction, { type: "TOGGLE_SECTION" }>;
@@ -490,6 +495,11 @@ const cvActionHandlers: Record<CvAction["type"], (state: CvData, action: CvActio
     };
   },
 };
+
+/** A radius from 0 (square) to 50 % (round); anything else falls back to round. */
+export function clampPhotoRadius(value: number): number {
+  return Number.isFinite(value) ? Math.min(50, Math.max(0, Math.round(value))) : 50;
+}
 
 function toggle<T>(list: T[] | undefined, value: T): T[] {
   return list?.includes(value) ? list.filter((v) => v !== value) : [...(list ?? []), value];

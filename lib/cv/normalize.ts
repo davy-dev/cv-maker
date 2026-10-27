@@ -1,3 +1,4 @@
+import { clampPhotoRadius } from "@/lib/cv/reducer";
 import type { CvData, CvLayout, CvSection } from "@/types/cv";
 
 export function emptyCvData(): CvData {
@@ -48,6 +49,7 @@ export function normalizeCvData(json: string): CvData {
     summary: parsed.summary ?? "",
     yearsExperience: parsed.yearsExperience ?? "",
     showPhoto: parsed.showPhoto ?? false,
+    ...(typeof parsed.photoRadius === "number" ? { photoRadius: clampPhotoRadius(parsed.photoRadius) } : {}),
     showProjects: parsed.showProjects ?? true,
     headerBgColor: parsed.headerBgColor ?? null,
     headerTextColor: parsed.headerTextColor ?? null,
